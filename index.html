@@ -176,7 +176,13 @@ button,input,select,textarea{font:inherit} button{cursor:pointer}
 </section>
 
 <section id="talhoes" class="page">
-  <div class="top"><div><h1>Talhões</h1><div class="sub">Áreas de produção do roseiral</div></div><button class="btn primary" onclick="showForm('talhaoForm')">+ Novo talhão</button></div>
+  <div class="top"><div><h1>Talhões</h1><div class="sub">Áreas de produção do roseiral</div></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn" type="button" onclick="testSupabaseConnection()">🔌 Testar banco</button>
+      <button class="btn" type="button" onclick="loadTalhoesFromSupabase()">↻ Atualizar</button>
+      <button class="btn primary" type="button" onclick="showForm('talhaoForm')">+ Novo talhão</button>
+    </div></div>
+    <div id="supabaseStatus" style="margin:-10px 0 16px 0;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:#fafafa;font-size:13px;color:var(--muted)">Banco online: verificando...</div>
   <div id="talhaoForm" class="card" style="display:none;margin-bottom:16px">
     <form class="form" onsubmit="saveTalhao(event)"><div class="formgrid">
       <div class="field"><label>Nome</label><input id="tNome" required placeholder="T-05"></div>
@@ -380,14 +386,18 @@ button,input,select,textarea{font:inherit} button{cursor:pointer}
 
 <div id="toast" class="toast"></div>
 
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase-config.js"></script>
+
 <script>
-const key='roseiral_mvp_v6';
+const key='roseiral_mvp_v15';
 const today=new Date().toISOString().slice(0,10);
 let db=JSON.parse(localStorage.getItem(key)||'null');
 if(!db){ const legacy=localStorage.getItem('roseiral_mvp_v3'); if(legacy){ try{ db=JSON.parse(legacy); }catch(e){} } }
 if(!db){
   db={
-    talhoes:[{id:1,nome:'T-01',area:2.5,variedade:'Rosa X',plantas:18500},{id:2,nome:'T-02',area:1.8,variedade:'Rosa Y',plantas:12400},{id:3,nome:'T-03',area:3.1,variedade:'Rosa Z',plantas:23100}],
+    talhoes:[],
     registros:[{id:1,tipo:'PRAGA',nome:'Pulgão',categoria:'Inseto',prioridade:'ALTO',talhaoId:1,data:today,obs:'Presença acima do nível observado em campo.',status:'ABERTO'},{id:2,tipo:'PRAGA',nome:'Ácaro-rajado',categoria:'Ácaro',prioridade:'MEDIO',talhaoId:3,data:today,obs:'Monitorar evolução visual.',status:'ABERTO'},{id:3,tipo:'ADUBACAO',nome:'Correção de magnésio',categoria:'Deficiência nutricional',prioridade:'BAIXO',talhaoId:2,data:today,obs:'Necessidade identificada em inspeção.',status:'ABERTO'}],
     produtos:[{id:1,nome:'Adubo A',tipo:'Adubo',ativo:'NPK 20-05-20',unidade:'kg'},{id:2,nome:'Fungicida X',tipo:'Fungicida',ativo:'Ingrediente ativo',unidade:'L'},{id:3,nome:'Acaricida Y',tipo:'Acaricida',ativo:'Ingrediente ativo',unidade:'L'}],
     recomendacoes:[{id:1,registroId:1,talhaoId:1,data:today,items:[{produtoId:2,dose:2,unidade:'L/ha'}],motivo:'Manejo do problema identificado',obs:'',status:'RECOMENDADA'},{id:2,registroId:2,talhaoId:3,data:today,items:[{produtoId:3,dose:1.2,unidade:'L/ha'}],motivo:'Redução da população observada',obs:'',status:'RECOMENDADA'}],
@@ -449,7 +459,9 @@ function saveHarvest(e){
     tamanhoBotao:document.getElementById('cBotao').value,
     obs:document.getElementById('cObs').value
   });
-  save();hideForm('harvestForm');e.target.reset();render();renderHarvestDashboard();toast('Colheita registrada')
+  save();hideForm('harvestForm');e.target.reset();render();
+initSupabase();
+loadTalhoesFromSupabase();renderHarvestDashboard();toast('Colheita registrada')
 }
 function deleteHarvest(id){
   if(!confirm('Excluir este registro de colheita?')) return;
@@ -625,7 +637,64 @@ function renderPendingChart(){const vals=db.talhoes.map(t=>({nome:t.nome,count:d
 function renderMonitoring(){const total=db.aplicacoes.length,res=db.aplicacoes.filter(a=>a.resultado==='RESOLVIDO').length,parc=db.aplicacoes.filter(a=>a.resultado==='PARCIAL').length,mon=db.aplicacoes.filter(a=>a.resultado==='EM_MONITORAMENTO').length,nr=db.aplicacoes.filter(a=>a.resultado==='NAO_RESOLVIDO').length;document.getElementById('monitoringPulse').innerHTML=`<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px"><div style="text-align:center"><div style="font-size:25px;font-weight:800">${res}</div><small>Resolvidos</small></div><div style="text-align:center"><div style="font-size:25px;font-weight:800">${parc}</div><small>Parciais</small></div><div style="text-align:center"><div style="font-size:25px;font-weight:800">${mon}</div><small>Monitorando</small></div><div style="text-align:center"><div style="font-size:25px;font-weight:800">${nr}</div><small>Não resolvidos</small></div></div><div style="height:12px;background:#eee;border-radius:99px;overflow:hidden;display:flex"><div style="width:${total?res/total*100:0}%;background:var(--ok)"></div><div style="width:${total?parc/total*100:0}%;background:#c9942d"></div><div style="width:${total?mon/total*100:0}%;background:#b08d45"></div><div style="width:${total?nr/total*100:0}%;background:var(--danger)"></div></div><div class="sub" style="margin-top:10px">${total?`Taxa de resolução atual: <b>${Math.round(res/total*100)}%</b>`:'Registre aplicações para ativar o monitoramento.'}</div>`;const list=db.aplicacoes.filter(a=>a.resultado!=='RESOLVIDO').slice().reverse().slice(0,6);document.getElementById('monitoringList').innerHTML=list.length?list.map(a=>`<div style="padding:10px 0;border-bottom:1px solid var(--line)"><b>${tname(a.talhaoId)}</b> — ${esc(rname(a.registroId))}<div class="sub">${resultLabel(a.resultado)} · ${a.reavaliacao?`reavaliar ${fmt(a.reavaliacao)}`:'sem data de reavaliação'}</div></div>`).join(''):'<div class="empty">Nenhum caso aguardando monitoramento.</div>'}
 function renderHistory(){document.getElementById('history').innerHTML=db.aplicacoes.slice().reverse().map(a=>`<div class="card" style="margin-bottom:12px"><div class="section-title"><h2>${esc(rname(a.registroId))} — ${tname(a.talhaoId)}</h2>${statusBadge(a.resultado)}</div><div class="sub">${fmt(a.data)} ${a.hora||''} · ${(a.items||[]).map(i=>`${esc(pname(i.produtoId))}: ${i.qtd} ${esc(i.unidade)}`).join(' · ')}</div><p>${esc(a.resultadoObs||a.obs||'')}</p>${a.indice?`<div class="sub">Índice observado: <b>${a.indice}%</b></div>`:''}<div class="photo-grid">${(a.fotos||[]).map(f=>`<div class="photo"><img src="${f.data}" alt="${esc(f.name)}"><small>${esc(f.name)}</small></div>`).join('')}</div></div>`).join('')||'<div class="empty">O histórico aparecerá após a primeira aplicação.</div>'}
 
-function saveTalhao(e){e.preventDefault();db.talhoes.push({id:Date.now(),nome:tNome.value,area:Number(tArea.value),variedade:tVariedade.value,plantas:Number(tPlantas.value)||0});save();hideForm('talhaoForm');e.target.reset();render();toast('Talhão salvo')}
+
+let supabaseClient = null;
+function initSupabase(){
+  try{
+    if(window.ROSEIRAL_SUPABASE_URL && window.ROSEIRAL_SUPABASE_PUBLISHABLE_KEY &&
+       !window.ROSEIRAL_SUPABASE_URL.includes('COLOQUE_') &&
+       !window.ROSEIRAL_SUPABASE_PUBLISHABLE_KEY.includes('COLOQUE_')){
+      supabaseClient = window.supabase.createClient(window.ROSEIRAL_SUPABASE_URL,window.ROSEIRAL_SUPABASE_PUBLISHABLE_KEY);
+    }
+  }catch(err){ supabaseClient=null; }
+}
+function setSupabaseStatus(kind,msg){
+  const el=document.getElementById('supabaseStatus'); if(!el)return;
+  el.textContent=msg;
+  el.style.color=kind==='ok'?'var(--ok)':kind==='err'?'var(--danger)':'var(--muted)';
+  el.style.background=kind==='ok'?'#eef8f0':kind==='err'?'#fff0f0':'#fafafa';
+}
+async function testSupabaseConnection(){
+  initSupabase();
+  if(!supabaseClient){setSupabaseStatus('err','Banco online: configuração do Supabase ainda não foi preenchida.');toast('Preencha o supabase-config.js');return}
+  const {data,error}=await supabaseClient.from('Talhões').select('id,nome,area_ha,variedade,numero_plantas').order('id',{ascending:true}).limit(1);
+  if(error){setSupabaseStatus('err','Banco online: erro ao consultar Talhões. Veja a mensagem no navegador.');console.error(error);toast('Supabase respondeu com erro');return}
+  setSupabaseStatus('ok',`Banco online: conectado ✓ · ${data.length} registro(s) encontrado(s)`);
+  await loadTalhoesFromSupabase();
+}
+async function loadTalhoesFromSupabase(){
+  initSupabase();
+  if(!supabaseClient){setSupabaseStatus('err','Banco online: configuração pendente; usando dados locais.');return}
+  const {data,error}=await supabaseClient.from('Talhões').select('id,nome,area_ha,variedade,numero_plantas').order('id',{ascending:true});
+  if(error){setSupabaseStatus('err','Banco online: sem acesso à tabela Talhões. Verifique as políticas RLS.');console.error(error);return}
+  if(Array.isArray(data)){
+    // Supabase é a fonte oficial: mesmo que esteja vazio, não mantemos dados de exemplo locais.
+    db.talhoes=data.map(t=>({id:t.id,nome:t.nome,area:Number(t.area_ha||0),variedade:t.variedade||'',plantas:Number(t.numero_plantas||0)}));
+    save();
+  }
+  setSupabaseStatus('ok',`Banco online: conectado ✓ · ${data.length} talhão(ões)`);
+  if(typeof render==='function')render();
+}
+async function saveTalhao(e){
+  e.preventDefault();
+  const novo={nome:tNome.value.trim(),area:Number(tArea.value),variedade:tVariedade.value.trim(),plantas:Number(tPlantas.value)||0};
+  if(!novo.nome){toast('Informe o nome do talhão');return}
+  initSupabase();
+  if(supabaseClient){
+    const {data,error}=await supabaseClient.from('Talhões').insert({
+      nome:novo.nome,area_ha:novo.area,variedade:novo.variedade,numero_plantas:novo.plantas
+    }).select('id,nome,area_ha,variedade,numero_plantas').single();
+    if(error){
+      console.error(error);
+      setSupabaseStatus('err','Banco online: não foi possível salvar o talhão. Verifique RLS/políticas.');
+      toast('Erro ao salvar no Supabase');return
+    }
+    db.talhoes.push({id:data.id,nome:data.nome,area:Number(data.area_ha||0),variedade:data.variedade||'',plantas:Number(data.numero_plantas||0)});
+    save();hideForm('talhaoForm');e.target.reset();render();toast('Talhão salvo no banco online');
+  }else{
+    db.talhoes.push({id:Date.now(),...novo});save();hideForm('talhaoForm');e.target.reset();render();toast('Talhão salvo localmente');
+  }
+}
 function saveProduto(e){e.preventDefault();db.produtos.push({id:Date.now(),nome:pNome.value,tipo:pTipo.value,ativo:pAtivo.value,unidade:pUnidade.value});save();hideForm('produtoForm');e.target.reset();render();toast('Produto salvo')}
 function openRegistroForm(){populateSelect('gTalhao',db.talhoes,'nome');document.getElementById('gData').value=today;showForm('registroForm')}
 function saveRegistro(e){e.preventDefault();const get=id=>document.getElementById(id);if(!get('gTalhao').value){toast('Cadastre um talhão antes de registrar');return}db.registros.push({id:Date.now(),tipo:get('gTipo').value,nome:get('gNome').value,categoria:get('gCategoria').value,prioridade:get('gPrioridade').value,talhaoId:Number(get('gTalhao').value),data:get('gData').value,obs:get('gObs').value,status:'ABERTO'});save();hideForm('registroForm');e.target.reset();render();toast('Identificação registrada')}
