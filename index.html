@@ -1,0 +1,1342 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Roseiral — Controle de Manejo</title>
+<style>
+:root{--bg:#f7f7f5;--panel:#fff;--ink:#252525;--muted:#6d6d6d;--line:#e6e3df;--accent:#8f3d5c;--accent2:#f3e8ed;--ok:#2d7a50;--warn:#9b6b16;--danger:#a33d3d}
+*{box-sizing:border-box} body{margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,sans-serif;background:var(--bg);color:var(--ink)}
+button,input,select,textarea{font:inherit} button{cursor:pointer}
+.app{display:flex;min-height:100vh}.sidebar{width:240px;background:#242124;color:#fff;padding:22px 16px;position:sticky;top:0;height:100vh}
+.brand{font-weight:800;font-size:20px;padding:8px 10px 24px}.nav{display:grid;gap:6px}.nav button{border:0;background:transparent;color:#d9d6d8;text-align:left;padding:11px 12px;border-radius:8px}.nav button.active,.nav button:hover{background:#3b3539;color:#fff}
+.main{flex:1;padding:28px;max-width:1400px;margin:auto;width:100%}.top{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:24px}.top h1{margin:0;font-size:28px}.sub{color:var(--muted);margin-top:5px}
+.btn{border:1px solid var(--line);background:#fff;border-radius:8px;padding:10px 14px}.btn.primary{background:var(--accent);color:#fff;border-color:var(--accent)}.btn.danger{color:#fff;background:var(--danger);border-color:var(--danger)}
+.grid{display:grid;gap:16px}.kpis{grid-template-columns:repeat(4,minmax(0,1fr));margin-bottom:22px}.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px}.kpi .label{color:var(--muted);font-size:13px}.kpi .value{font-size:28px;font-weight:750;margin-top:7px}.two{grid-template-columns:1.3fr .7fr}.three{grid-template-columns:repeat(3,1fr)}
+.table{width:100%;border-collapse:collapse}.table th,.table td{padding:12px 8px;border-bottom:1px solid var(--line);text-align:left;font-size:14px;vertical-align:top}.table th{font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)}
+.badge{display:inline-flex;align-items:center;border-radius:999px;padding:4px 8px;font-size:12px;font-weight:650}.badge.green{background:#e7f4ec;color:var(--ok)}.badge.yellow{background:#fbf0d5;color:var(--warn)}.badge.gray{background:#ececec;color:#666}.badge.red{background:#f8e6e6;color:var(--danger)}
+.form{display:grid;gap:14px}.formgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.field{display:grid;gap:6px}.field label{font-size:13px;font-weight:650}.field input,.field select,.field textarea{width:100%;padding:10px;border:1px solid var(--line);border-radius:8px;background:#fff}.field textarea{min-height:90px;resize:vertical}
+.actions{display:flex;gap:8px;justify-content:flex-end;margin-top:8px}.section-title{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}.section-title h2{font-size:18px;margin:0}
+.photo-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.photo{position:relative;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#fafafa;aspect-ratio:1}.photo img{width:100%;height:100%;object-fit:cover}.photo small{position:absolute;left:6px;right:6px;bottom:6px;background:rgba(0,0,0,.55);color:#fff;padding:4px 6px;border-radius:5px}
+.empty{padding:28px;text-align:center;color:var(--muted);border:1px dashed var(--line);border-radius:10px}
+.page{display:none}.page.active{display:block}
+.toast{position:fixed;right:20px;bottom:20px;background:#242124;color:#fff;padding:12px 14px;border-radius:8px;display:none}
+@media(max-width:1100px){.harvest-kpis{grid-template-columns:repeat(3,minmax(0,1fr))}} @media(max-width:900px){.sidebar{width:200px}.kpis,.harvest-kpis{grid-template-columns:repeat(2,1fr)}.two,.three,.formgrid{grid-template-columns:1fr}.photo-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:650px){.app{display:block}.sidebar{width:100%;height:auto;position:static}.nav{grid-template-columns:repeat(3,1fr)}.nav button{font-size:12px}.main{padding:16px}.kpis{grid-template-columns:1fr 1fr}.top{align-items:flex-start;flex-direction:column}}
+
+.harvest-hero{background:linear-gradient(135deg,#fff7fa,#f7f7f5);border:1px solid #ead5df;border-radius:14px;padding:18px}
+.harvest-kpis{grid-template-columns:repeat(5,minmax(0,1fr))}
+.bar-list{display:grid;gap:11px}
+.bar-row{display:grid;grid-template-columns:90px 1fr 70px;gap:10px;align-items:center}
+.bar-track{height:16px;background:#eee9eb;border-radius:999px;overflow:hidden}
+.bar-fill{height:100%;background:var(--accent);border-radius:999px}
+.metric-note{font-size:12px;color:var(--muted);margin-top:4px}
+
+
+.dashboard-toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.dashboard-filter{background:#fff;border:1px solid var(--line);border-radius:9px;padding:8px 11px;font-size:13px}
+.dashboard-filter input{border:0;background:transparent;margin-left:6px}
+.kpi-accent{position:relative;overflow:hidden}
+.kpi-accent:after{content:"";position:absolute;right:-24px;top:-24px;width:86px;height:86px;border-radius:50%;background:var(--accent2);opacity:.8}
+.kpi-icon{position:absolute;right:15px;top:15px;width:42px;height:42px;border-radius:50%;display:grid;place-items:center;font-size:19px}
+.chart-card{min-height:275px}
+.svg-chart{width:100%;height:235px;display:block}
+.chart-center{display:grid;place-items:center;min-height:175px;position:relative}
+.donut{width:172px;height:172px;border-radius:50%;position:relative}
+.donut:after{content:"";position:absolute;inset:36px;background:#fff;border-radius:50%}
+.donut-label{position:absolute;inset:0;display:grid;place-items:center;text-align:center;z-index:1;font-weight:800}
+.legend{display:grid;gap:7px;margin-top:10px}
+.legend-item{display:flex;align-items:center;gap:8px;font-size:13px}
+.legend-dot{width:10px;height:10px;border-radius:50%;flex:0 0 auto}
+.progress{height:10px;background:#eee;border-radius:999px;overflow:hidden}
+.progress>span{display:block;height:100%;border-radius:999px}
+.attention-row{display:grid;grid-template-columns:1.55fr .55fr .7fr .9fr .95fr;gap:8px;align-items:center;padding:11px 0;border-bottom:1px solid var(--line);font-size:13px}
+.attention-head{color:var(--muted);font-size:11px;text-transform:uppercase;font-weight:700}
+@media(max-width:1100px){.harvest-kpis{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:900px){.kpis,.harvest-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:800px){.attention-row{grid-template-columns:1fr 1fr}.attention-head{display:none}}
+
+</style>
+</head>
+<body>
+<div class="app">
+<aside class="sidebar">
+  <div class="brand">🌹 Roseiral</div>
+  <div class="nav">
+    <button class="active" data-page="dashboard">Dashboard</button>
+    <button data-page="talhoes">Talhões</button>
+    <button data-page="registros">Registro de Pragas/Adubação</button>
+    <button data-page="produtos">Produtos</button>
+    <button data-page="recomendacoes">Recomendações</button>
+    <button data-page="aplicacoes">Aplicações</button>
+    <button data-page="historico">Histórico</button>
+    <button data-page="colheita">Colheita</button>
+    <button data-page="dashboardColheita">Dashboard de Colheita</button>
+  </div>
+</aside>
+
+<main class="main">
+
+<section id="dashboard" class="page active">
+  <div class="top">
+    <div><h1>Dashboard de Manejo</h1><div class="sub">Pragas, necessidades de adubação, recomendações, aplicações e resultados.</div></div>
+    <div class="dashboard-toolbar">
+      <label class="dashboard-filter">Mês <input id="manejoMonthFilter" type="month" onchange="renderManejoDashboard()"></label>
+      <button class="btn" type="button" onclick="showPage('registros');openRegistroForm()">+ Registrar ocorrência</button>
+      <button class="btn primary" type="button" onclick="showPage('recomendacoes');openRecommendation()">+ Nova recomendação</button>
+    </div>
+  </div>
+
+  <div class="grid kpis" style="margin-bottom:18px">
+    <div class="card kpi kpi-accent"><div class="label">Ocorrências identificadas</div><div class="value" id="mkOcc">0</div><div class="kpi-warning" id="mkOccNote">0 abertas</div><div class="kpi-icon" style="background:#fdecef">🐞</div></div>
+    <div class="card kpi kpi-accent"><div class="label">Recomendações pendentes</div><div class="value" id="mkRec">0</div><div class="kpi-positive">Aguardando execução</div><div class="kpi-icon" style="background:#edf3ff">📝</div></div>
+    <div class="card kpi kpi-accent"><div class="label">Aplicações realizadas</div><div class="value" id="mkApp">0</div><div class="kpi-positive">No mês selecionado</div><div class="kpi-icon" style="background:#eaf7ef">🧴</div></div>
+    <div class="card kpi kpi-accent"><div class="label">Taxa de resolução</div><div class="value" id="mkRate">0%</div><div class="kpi-positive" id="mkRateNote">Meta 80%</div><div class="kpi-icon" style="background:#f0ebff">◔</div></div>
+    <div class="card kpi kpi-accent"><div class="label">Em monitoramento</div><div class="value" id="mkMon">0</div><div class="kpi-warning">Aguardando avaliação</div><div class="kpi-icon" style="background:#fff2d7">👁</div></div>
+  </div>
+
+  <div class="grid three" style="margin-bottom:16px">
+    <div class="card chart-card">
+      <div class="section-title"><h2>Status das ocorrências</h2><span class="sub">Distribuição</span></div>
+      <div class="chart-center"><div id="manejoDonut" class="donut"></div><div id="manejoDonutLabel" class="donut-label"></div></div>
+      <div id="manejoLegend" class="legend"></div>
+    </div>
+    <div class="card chart-card">
+      <div class="section-title"><h2>Recomendações por talhão</h2><span class="sub">Pendentes</span></div>
+      <svg id="manejoPendingBars" class="svg-chart" viewBox="0 0 520 230"></svg>
+    </div>
+    <div class="card chart-card">
+      <div class="section-title"><h2>Ocorrências por talhão</h2><span class="sub">Situação empilhada</span></div>
+      <svg id="manejoStacked" class="svg-chart" viewBox="0 0 520 230"></svg>
+    </div>
+  </div>
+
+  <div class="grid three" style="margin-bottom:16px">
+    <div class="card chart-card">
+      <div class="section-title"><h2>Taxa de resolução</h2><span class="sub">Meta: 80%</span></div>
+      <div class="chart-center">
+        <svg id="manejoGauge" viewBox="0 0 260 150" style="width:100%;max-width:260px">
+          <path d="M35 120 A95 95 0 0 1 225 120" fill="none" stroke="#eee" stroke-width="22" stroke-linecap="round"/>
+          <path id="manejoGaugeArc" d="M35 120 A95 95 0 0 1 225 120" fill="none" stroke="#59a953" stroke-width="22" stroke-linecap="round" pathLength="100" stroke-dasharray="0 100"/>
+          <line id="manejoNeedle" x1="130" y1="120" x2="130" y2="38" stroke="#252525" stroke-width="4" stroke-linecap="round"/>
+          <text id="manejoGaugeValue" x="130" y="143" text-anchor="middle" font-size="28" font-weight="800">0%</text>
+        </svg>
+      </div>
+    </div>
+    <div class="card chart-card">
+      <div class="section-title"><h2>Top 5 pragas / necessidades</h2><span class="sub">Ocorrências</span></div>
+      <svg id="manejoTopProblems" class="svg-chart" viewBox="0 0 520 230"></svg>
+    </div>
+    <div class="card chart-card">
+      <div class="section-title"><h2>Prioridades abertas</h2><span class="sub">Alto, médio e baixo</span></div>
+      <div id="manejoPriorities"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="section-title"><h2>Ocorrências que precisam de atenção</h2><span class="sub">Prioridade primeiro</span></div>
+    <div class="attention-row attention-head"><div>Ocorrência</div><div>Talhão</div><div>Prioridade</div><div>Status</div><div>Reavaliação</div></div>
+    <div id="manejoAttention"></div>
+  </div>
+</section>
+
+
+<section id="dashboardColheita" class="page">
+  <div class="top">
+    <div><h1>Dashboard de Colheita</h1><div class="sub">Produção, qualidade e valor comercial do roseiral.</div></div>
+    <div class="dashboard-toolbar">
+      <label class="dashboard-filter">Mês <input id="harvestMonthFilter" type="month" onchange="renderHarvestDashboard()"></label>
+      <button class="btn primary" type="button" onclick="showPage('colheita');openHarvestForm()">+ Registrar colheita</button>
+    </div>
+  </div>
+
+  <div class="grid harvest-kpis" style="margin-bottom:18px">
+    <div class="card kpi kpi-accent"><div class="label">Hastes no mês</div><div class="value" id="hkHastes">0</div><div class="kpi-positive">Produção registrada</div><div class="kpi-icon" style="background:#e9f7e8">🌿</div></div>
+    <div class="card kpi kpi-accent"><div class="label">Valor total</div><div class="value" id="hkValor">R$ 0,00</div><div class="kpi-positive">Receita bruta</div><div class="kpi-icon" style="background:#eaf7ef">💰</div></div>
+    <div class="card kpi kpi-accent"><div class="label">Preço médio / haste</div><div class="value" id="hkPrecoMedio">R$ 0,00</div><div class="kpi-positive">Média ponderada</div><div class="kpi-icon" style="background:#fff2d7">🏷</div></div>
+    <div class="card kpi kpi-accent"><div class="label">Talhão destaque</div><div class="value" id="hkTalhaoDestaque">-</div><div class="kpi-positive" id="hkTalhaoQtd">0 hastes</div><div class="kpi-icon" style="background:#f0ebff">🏆</div></div>
+    <div class="card kpi kpi-accent"><div class="label">Cores colhidas</div><div class="value" id="hkCores">0</div><div class="kpi-positive">Diversidade comercial</div><div class="kpi-icon" style="background:#fdecef">🎨</div></div>
+  </div>
+
+  <div class="grid three" style="margin-bottom:16px">
+    <div class="card chart-card"><div class="section-title"><h2>Hastes por talhão</h2><span class="sub">Volume</span></div><svg id="harvestBars" class="svg-chart" viewBox="0 0 520 230"></svg></div>
+    <div class="card chart-card"><div class="section-title"><h2>Valor por talhão</h2><span class="sub">R$</span></div><svg id="harvestValueBars" class="svg-chart" viewBox="0 0 520 230"></svg></div>
+    <div class="card chart-card"><div class="section-title"><h2>Perfil das hastes</h2><span class="sub">Comprimento</span></div><div class="chart-center"><div id="harvestHasteDonut" class="donut"></div><div id="harvestHasteLabel" class="donut-label"></div></div><div id="harvestHasteLegend" class="legend"></div></div>
+  </div>
+
+  <div class="grid two" style="margin-bottom:16px">
+    <div class="card chart-card"><div class="section-title"><h2>Evolução diária</h2><span class="sub">Hastes colhidas</span></div><svg id="harvestTrend" class="svg-chart" viewBox="0 0 760 250"></svg></div>
+    <div class="card chart-card"><div class="section-title"><h2>Distribuição por cor</h2><span class="sub">Volume comercial</span></div><div class="chart-center"><div id="harvestColorDonut" class="donut"></div><div id="harvestColorLabel" class="donut-label"></div></div><div id="harvestColorLegend" class="legend"></div></div>
+  </div>
+
+  <div class="card">
+    <div class="section-title"><h2>Últimas colheitas registradas</h2><span class="sub">Detalhamento</span></div>
+    <div id="recentHarvests"></div>
+  </div>
+</section>
+
+<section id="talhoes" class="page">
+  <div class="top"><div><h1>Talhões</h1><div class="sub">Áreas de produção do roseiral</div></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn" type="button" onclick="testSupabaseConnection()">🔌 Testar banco</button>
+      <button class="btn" type="button" onclick="loadTalhoesFromSupabase()">↻ Atualizar</button>
+      <button class="btn primary" type="button" onclick="showForm('talhaoForm')">+ Novo talhão</button>
+    </div></div>
+    <div id="supabaseStatus" style="margin:-10px 0 16px 0;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:#fafafa;font-size:13px;color:var(--muted)">Banco online: verificando...</div>
+  <div id="talhaoForm" class="card" style="display:none;margin-bottom:16px">
+    <form class="form" onsubmit="saveTalhao(event)"><div class="formgrid">
+      <div class="field"><label>Nome</label><input id="tNome" required placeholder="T-05"></div>
+      <div class="field"><label>Área (ha)</label><input id="tArea" required type="number" step="0.01"></div>
+      <div class="field"><label>Variedade</label><input id="tVariedade" placeholder="Ex.: Rosa X"></div>
+      <div class="field"><label>Número de plantas</label><input id="tPlantas" type="number"></div>
+    </div><div class="actions"><button type="button" class="btn" onclick="hideForm('talhaoForm')">Cancelar</button><button class="btn primary">Salvar</button></div></form>
+  </div>
+  <div class="card"><table class="table"><thead><tr><th>Talhão</th><th>Área</th><th>Variedade</th><th>Plantas</th></tr></thead><tbody id="talhoesTable"></tbody></table></div>
+</section>
+
+
+<section id="colheita" class="page">
+  <div class="top">
+    <div><h1>Colheita</h1><div class="sub">Registre a colheita do dia por talhão, cor e padrão comercial da haste.</div></div>
+    <button class="btn primary" type="button" onclick="openHarvestForm()">+ Nova colheita</button>
+  </div>
+
+  <div id="harvestForm" class="card" style="display:none;margin-bottom:16px">
+    <div class="harvest-hero" style="margin-bottom:14px">
+      <b>Registro da colheita</b>
+      <div class="sub">Você pode lançar várias linhas para o mesmo talhão no mesmo dia, por exemplo, por cor e comprimento.</div>
+    </div>
+    <form class="form" onsubmit="saveHarvest(event)">
+      <div class="formgrid">
+        <div class="field"><label>Data da colheita</label><input id="cData" type="date" required></div>
+        <div class="field"><label>Talhão</label><select id="cTalhao" required></select></div>
+        <div class="field"><label>Cor da rosa</label>
+          <select id="cCor" required>
+            <option value="">Selecione</option>
+            <option>Vermelha</option>
+            <option>Rosa</option>
+            <option>Branca</option>
+            <option>Amarela</option>
+            <option>Laranja</option>
+            <option>Champagne</option>
+            <option>Outra</option>
+          </select>
+        </div>
+        <div class="field"><label>Quantidade de hastes</label><input id="cQtd" type="number" min="1" step="1" required></div>
+        <div class="field"><label>Preço unitário (R$)</label><input id="cPreco" type="number" min="0" step="0.01" required></div>
+        <div class="field"><label>Tamanho da haste</label>
+          <select id="cHaste" required>
+            <option value="">Selecione</option>
+            <option>Acima de 60 cm</option>
+            <option>55 a 60 cm</option>
+            <option>45 a 49 cm</option>
+            <option>40 a 44 cm</option>
+          </select>
+        </div>
+        <div class="field"><label>Tamanho do botão</label><input id="cBotao" placeholder="Ex.: 5 cm ou Pequeno / Médio / Grande" required></div>
+        <div class="field"><label>Observações</label><input id="cObs" placeholder="Opcional"></div>
+      </div>
+      <div class="actions">
+        <button type="button" class="btn" onclick="hideForm('harvestForm')">Cancelar</button>
+        <button class="btn primary">Salvar colheita</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="card">
+    <table class="table">
+      <thead><tr><th>Data</th><th>Talhão</th><th>Cor</th><th>Hastes</th><th>Preço unitário</th><th>Tamanho da haste</th><th>Botão</th><th>Total</th><th></th></tr></thead>
+      <tbody id="harvestTable"></tbody>
+    </table>
+  </div>
+</section>
+
+<section id="registros" class="page">
+  <div class="top">
+    <div><h1>Registro de Pragas/Adubação</h1><div class="sub">Cadastre a praga ou necessidade identificada antes de recomendar e aplicar.</div></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn" type="button" onclick="loadRegistrosFromSupabase()">↻ Atualizar</button>
+      <button class="btn primary" type="button" onclick="openRegistroForm()">+ Nova identificação</button>
+    </div>
+  </div>
+  <div id="supabaseRegistrosStatus" style="margin:-10px 0 16px 0;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:#fafafa;font-size:13px;color:var(--muted)">Registros online: verificando...</div>
+
+  <div id="registroForm" class="card" style="display:none;margin-bottom:16px">
+    <form class="form" onsubmit="saveRegistro(event)">
+      <div class="formgrid">
+        <div class="field"><label>Tipo</label>
+          <select id="gTipo" onchange="updateRegistroLabels()"><option value="PRAGA">Praga</option><option value="ADUBACAO">Necessidade de adubação</option></select>
+        </div>
+        <div class="field"><label>Nome da praga / necessidade</label><input id="gNome" required placeholder="Ex.: Pulgão ou deficiência de magnésio"></div>
+        <div class="field"><label>Categoria</label><input id="gCategoria" placeholder="Inseto, ácaro, deficiência nutricional..."></div>
+        <div class="field"><label>Prioridade</label><select id="gPrioridade" required>
+        <option value="ALTO">Alto</option><option value="MEDIO">Médio</option><option value="BAIXO">Baixo</option>
+      </select></div>
+        <div class="field"><label>Talhão identificado</label><select id="gTalhao"></select></div>
+        <div class="field"><label>Data da identificação</label><input id="gData" type="date" required></div>
+      </div>
+      <div class="field"><label>Observações / diagnóstico</label><textarea id="gObs" placeholder="Descreva o que foi observado no campo."></textarea></div>
+      <div class="actions"><button type="button" class="btn" onclick="hideForm('registroForm')">Cancelar</button><button class="btn primary">Salvar identificação</button></div>
+    </form>
+  </div>
+
+  <div class="card">
+    <table class="table"><thead><tr><th>Data</th><th>Talhão</th><th>Tipo</th><th>Praga / necessidade</th><th>Categoria</th><th>Prioridade</th><th>Status</th><th></th></tr></thead>
+    <tbody id="registrosTable"></tbody></table>
+  </div>
+</section>
+
+<section id="produtos" class="page">
+  <div class="top"><div><h1>Produtos</h1><div class="sub">Insumos usados no manejo — o tipo influencia o diagnóstico, recomendação e aplicação.</div></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn" type="button" onclick="loadProdutosFromSupabase()">↻ Atualizar</button>
+      <button class="btn primary" type="button" onclick="showForm('produtoForm')">+ Novo produto</button>
+    </div></div>
+    <div id="supabaseProdutosStatus" style="margin:-10px 0 16px 0;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:#fafafa;font-size:13px;color:var(--muted)">Produtos online: verificando...</div>
+  <div id="produtoForm" class="card" style="display:none;margin-bottom:16px">
+    <form class="form" onsubmit="saveProduto(event)"><div class="formgrid">
+      <div class="field"><label>Nome comercial</label><input id="pNome" required></div>
+      <div class="field"><label>Tipo</label><select id="pTipo">
+        <option>Adubo</option>
+        <option>Adubo Foliar</option>
+        <option>Adjuvante</option>
+        <option>Acaricida</option>
+        <option>Inseticida</option>
+        <option>Fungicida</option>
+        <option>Herbicida</option>
+        <option>Outro</option>
+      </select></div>
+      <div class="field"><label>Ingrediente ativo / formulação</label><input id="pAtivo"></div>
+      <div class="field"><label>Unidade</label><input id="pUnidade" placeholder="kg, L, g, mL"></div>
+    </div><div class="actions"><button type="button" class="btn" onclick="hideForm('produtoForm')">Cancelar</button><button class="btn primary">Salvar</button></div></form>
+  </div>
+  <div class="card"><table class="table"><thead><tr><th>Produto</th><th>Tipo</th><th>Ingrediente / formulação</th><th>Unidade</th></tr></thead><tbody id="produtosTable"></tbody></table></div>
+</section>
+
+<section id="recomendacoes" class="page">
+  <div class="top"><div><h1>Recomendações</h1><div class="sub">Segunda etapa: criar uma recomendação vinculada à identificação, com um ou vários produtos.</div></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn" type="button" onclick="loadRecomendacoesFromSupabase()">↻ Atualizar</button>
+      <button class="btn primary" type="button" onclick="openRecommendation()">+ Nova recomendação</button>
+    </div>
+  </div>
+  <div id="supabaseRecomendacoesStatus" style="margin:-10px 0 16px 0;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:#fafafa;font-size:13px;color:var(--muted)">Recomendações online: verificando...</div>
+  <div id="recForm" class="card" style="display:none;margin-bottom:16px">
+    <div id="selectedRegistroBanner" style="display:none;margin-bottom:14px;padding:12px 14px;border:1px solid #ead5df;background:#fff7fa;border-radius:9px;font-size:14px;"></div>
+    <form class="form" onsubmit="saveRecommendation(event)">
+      <div class="formgrid">
+        <div class="field"><label>Identificação / necessidade</label><select id="rRegistro" required onchange="syncRecommendationFromRegistro()"></select></div>
+        <div class="field"><label>Talhão</label><select id="rTalhao" required></select></div>
+        <div class="field"><label>Data recomendada</label><input id="rData" type="date" required></div>
+      </div>
+      <div class="card" style="background:#fafafa">
+        <div class="section-title"><h2>Produtos da recomendação</h2><button type="button" class="btn" onclick="addRecommendationItem()">+ Adicionar produto</button></div>
+        <div class="sub" style="margin-bottom:10px">Uma recomendação pode conter vários produtos. Cada produto possui sua própria dose e unidade.</div>
+        <div id="recommendationItems"></div>
+      </div>
+      <div class="field"><label>Objetivo da recomendação</label><textarea id="rMotivo"></textarea></div>
+      <div class="field"><label>Observações</label><textarea id="rObs"></textarea></div>
+      <div class="actions"><button type="button" class="btn" onclick="hideForm('recForm')">Cancelar</button><button class="btn primary">Salvar recomendação</button></div>
+    </form>
+  </div>
+  <div class="card"><table class="table"><thead><tr><th>Data</th><th>Talhão</th><th>Identificação</th><th>Produtos</th><th>Status</th><th></th></tr></thead><tbody id="recTable"></tbody></table></div>
+</section>
+
+<section id="aplicacoes" class="page">
+  <div class="top"><div><h1>Aplicações</h1><div class="sub">Somente recomendações existentes podem gerar aplicações.</div></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" type="button" onclick="loadAplicacoesFromSupabase()">↻ Atualizar</button><button class="btn" type="button" onclick="testApplicationTables()">🔌 Testar banco</button></div>
+  </div>
+  <div id="supabaseAplicacoesStatus" style="margin:-10px 0 16px 0;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:#fafafa;font-size:13px;color:var(--muted)">Aplicações online: verificando...</div>
+  <div class="card" style="margin-bottom:16px;background:#fffafc;border-color:#efdce3">
+    <b>Fluxo obrigatório:</b> Identificação → Recomendação → Aplicação. Para aplicar, selecione uma recomendação <b>PENDENTE</b> e clique em <b>Aplicar</b>.
+  </div>
+  <div class="card">
+    <table class="table"><thead><tr><th>Data</th><th>Talhão</th><th>Identificação</th><th>Produtos</th><th>Resultado</th><th>Fotos</th></tr></thead><tbody id="appsTable"></tbody></table>
+  </div>
+</section>
+
+<section id="historico" class="page">
+  <div class="top"><div><h1>Histórico</h1><div class="sub">Rastreabilidade da identificação até o resultado monitorado.</div></div></div>
+  <div class="card"><div id="history"></div></div>
+</section>
+</main>
+</div>
+
+<div id="appModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);padding:20px;overflow:auto">
+  <div class="card" style="max-width:950px;margin:20px auto">
+    <div class="top"><div><h1 style="font-size:22px">Registrar aplicação</h1><div class="sub">Aplicação vinculada obrigatoriamente a uma recomendação.</div></div><button class="btn" onclick="closeApplication()">Fechar</button></div>
+    <div id="applicationSaveStatus" style="display:none;margin-bottom:14px;padding:12px 14px;border:1px solid var(--line);border-radius:9px;background:#fafafa;font-size:13px;white-space:pre-wrap"></div>
+    <form class="form" onsubmit="saveApplication(event)">
+      <div class="formgrid">
+        <div class="field"><label>Recomendação</label><select id="aRecomendacao" required onchange="syncApplicationFromRecommendation()"></select></div>
+        <div class="field"><label>Data</label><input id="aData" type="date" required></div>
+        <div class="field"><label>Hora</label><input id="aHora" type="time"></div>
+        <div class="field"><label>Identificação / necessidade</label><input id="aIdentificacao" readonly></div>
+        <div class="field"><label>Talhão</label><input id="aTalhaoNome" readonly></div>
+        <div class="field"><label>Operador</label><input id="aOperador" placeholder="Nome"></div>
+        <div class="field"><label>Equipamento</label><input id="aEquipamento"></div>
+        <div class="field"><label>Temperatura (°C)</label><input id="aTemp" type="number" step="0.1"></div>
+        <div class="field"><label>Umidade (%)</label><input id="aUmid" type="number" step="1"></div>
+        <div class="field"><label>Vento (km/h)</label><input id="aVento" type="number" step="0.1"></div>
+      </div>
+      <div class="card" style="background:#fafafa">
+        <div class="section-title"><h2>Produtos da aplicação</h2><span class="sub">Somente produtos previstos na recomendação</span></div>
+        <div id="applicationItems"></div>
+      </div>
+      <div class="field"><label>Observações</label><textarea id="aObs"></textarea></div>
+      <div class="card" style="background:#fff7fa;border-color:#efdce3">
+        <div class="section-title"><h2>Monitoramento do problema</h2><span class="sub">Acompanhe se a intervenção funcionou</span></div>
+        <div class="formgrid">
+          <div class="field"><label>Status inicial após aplicação</label><select id="aResultado"><option value="EM_MONITORAMENTO">Em monitoramento</option><option value="RESOLVIDO">Resolvido</option><option value="PARCIAL">Parcial</option><option value="NAO_RESOLVIDO">Não resolvido</option></select></div>
+          <div class="field"><label>Data da próxima avaliação</label><input id="aReavaliacao" type="date"></div>
+          <div class="field"><label>Índice observado (%)</label><input id="aIndice" type="number" min="0" max="100" step="1"></div>
+          <div class="field"><label>Observação do resultado</label><input id="aResultadoObs" placeholder="Ex.: redução visual da infestação"></div>
+        </div>
+      </div>
+      <div class="card" style="background:#fafafa">
+        <div class="section-title"><h2>Fotos da aplicação</h2><label class="btn">📷 Adicionar imagem<input id="aFotos" type="file" accept="image/*" multiple capture="environment" hidden onchange="previewPhotos(event)"></label></div>
+        <div id="photoPreview" class="photo-grid"></div>
+        <div class="sub" style="margin-top:8px">As imagens são compactadas antes do envio (máx. 1600 px e JPEG ~72%) para economizar espaço. No celular, o campo pode abrir a câmera.</div>
+      </div>
+      <div class="actions"><button type="button" class="btn" onclick="closeApplication()">Cancelar</button><button class="btn primary">Finalizar aplicação</button></div>
+    </form>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase-config.js"></script>
+
+<script>
+const key='roseiral_mvp_v25';
+const today=new Date().toISOString().slice(0,10);
+let db=JSON.parse(localStorage.getItem(key)||'null');
+if(!db){ const legacy=localStorage.getItem('roseiral_mvp_v3'); if(legacy){ try{ db=JSON.parse(legacy); }catch(e){} } }
+if(!db){
+  db={
+    talhoes:[],
+    registros:[{id:1,tipo:'PRAGA',nome:'Pulgão',categoria:'Inseto',prioridade:'ALTO',talhaoId:1,data:today,obs:'Presença acima do nível observado em campo.',status:'ABERTO'},{id:2,tipo:'PRAGA',nome:'Ácaro-rajado',categoria:'Ácaro',prioridade:'MEDIO',talhaoId:3,data:today,obs:'Monitorar evolução visual.',status:'ABERTO'},{id:3,tipo:'ADUBACAO',nome:'Correção de magnésio',categoria:'Deficiência nutricional',prioridade:'BAIXO',talhaoId:2,data:today,obs:'Necessidade identificada em inspeção.',status:'ABERTO'}],
+    produtos:[{id:1,nome:'Adubo A',tipo:'Adubo',ativo:'NPK 20-05-20',unidade:'kg'},{id:2,nome:'Fungicida X',tipo:'Fungicida',ativo:'Ingrediente ativo',unidade:'L'},{id:3,nome:'Acaricida Y',tipo:'Acaricida',ativo:'Ingrediente ativo',unidade:'L'}],
+    recomendacoes:[{id:1,registroId:1,talhaoId:1,data:today,items:[{produtoId:2,dose:2,unidade:'L/ha'}],motivo:'Manejo do problema identificado',obs:'',status:'RECOMENDADA'},{id:2,registroId:2,talhaoId:3,data:today,items:[{produtoId:3,dose:1.2,unidade:'L/ha'}],motivo:'Redução da população observada',obs:'',status:'RECOMENDADA'}],
+    aplicacoes:[]
+  };
+}
+function migrate(){
+  db.talhoes=db.talhoes||[]; db.registros=db.registros||[]; db.produtos=db.produtos||[]; db.recomendacoes=db.recomendacoes||[]; db.aplicacoes=db.aplicacoes||[]; db.colheitas=db.colheitas||[];
+  db.registros.forEach(r=>{r.prioridade=r.prioridade||'MEDIO'; delete r.indicador;});
+  db.recomendacoes.forEach(r=>{if(!r.items){r.items=[];if(r.produtoId)r.items.push({produtoId:r.produtoId,dose:r.dose||0,unidade:r.unidade||''});delete r.produtoId;delete r.dose;delete r.unidade;}});
+  db.colheitas=db.colheitas||[];
+  db.aplicacoes.forEach(a=>{a.items=a.items||((a.produtoId)?[{produtoId:a.produtoId,qtd:a.qtd||0,unidade:a.unidade||''}]:[]);delete a.produtoId;delete a.qtd;delete a.unidade;a.fotos=a.fotos||[];a.resultado=a.resultado||'EM_MONITORAMENTO';});
+  localStorage.setItem(key,JSON.stringify(db));
+}
+migrate();
+let pendingPhotos=[];
+const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
+function save(){localStorage.setItem(key,JSON.stringify(db))}
+function toast(s){const t=document.getElementById('toast');t.textContent=s;t.style.display='block';setTimeout(()=>t.style.display='none',2200)}
+function showForm(id){document.getElementById(id).style.display='block'}
+function hideForm(id){document.getElementById(id).style.display='none'}
+function showPage(id){
+  document.querySelectorAll('.nav button').forEach(x=>x.classList.toggle('active',x.dataset.page===id));
+  document.querySelectorAll('.page').forEach(p=>p.classList.toggle('active',p.id===id));
+  render();
+  if(id==='recomendacoes') loadRecomendacoesFromSupabase();
+  if(id==='aplicacoes') loadAplicacoesFromSupabase();
+}
+document.querySelectorAll('.nav button').forEach(b=>b.onclick=()=>showPage(b.dataset.page));
+function populateSelect(id,items,text){const el=document.getElementById(id);el.innerHTML=items.length?items.map(x=>`<option value="${x.id}">${esc(x[text])}</option>`).join(''):'<option value="">Nenhuma opção</option>'}
+function tname(id){return db.talhoes.find(x=>x.id==id)?.nome||'-'}
+function pname(id){return db.produtos.find(x=>x.id==id)?.nome||'-'}
+function rname(id){return db.registros.find(x=>x.id==id)?.nome||'-'}
+function rtype(id){return db.registros.find(x=>x.id==id)?.tipo==='ADUBACAO'?'Adubação':'Praga'}
+function fmt(d){return d?new Date(d+'T00:00:00').toLocaleDateString('pt-BR'):'-'}
+function priorityBadge(p){const c=p==='ALTO'?'red':p==='BAIXO'?'green':'yellow';const txt={ALTO:'Alto',MEDIO:'Médio',BAIXO:'Baixo'}[p]||p;return `<span class="badge ${c}">${txt}</span>`}
+function resultLabel(v){return ({EM_MONITORAMENTO:'Em monitoramento',RESOLVIDO:'Resolvido',PARCIAL:'Parcial',NAO_RESOLVIDO:'Não resolvido'}[v]||v||'-')}
+function statusBadge(s){const c=s==='APLICADA'||s==='RESOLVIDO'?'green':s==='RECOMENDADA'||s==='EM_MONITORAMENTO'?'yellow':s==='NAO_RESOLVIDO'?'red':'gray';return `<span class="badge ${c}">${esc(s)}</span>`}
+function emptyRow(n,msg){return `<tr><td colspan="${n}"><div class="empty">${msg}</div></td></tr>`}
+function recProductsText(r){return (r.items||[]).map(i=>`${esc(pname(i.produtoId))} <span class="sub">(${i.dose} ${esc(i.unidade)})</span>`).join('<br>')||'-'}
+
+
+function brl(v){return Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}
+function monthKey(date){return String(date||'').slice(0,7)}
+function openHarvestForm(){
+  populateSelect('cTalhao',db.talhoes,'nome');
+  document.getElementById('cData').value=today;
+  showForm('harvestForm');
+}
+function saveHarvest(e){
+  e.preventDefault();
+  const qtd=Number(document.getElementById('cQtd').value);
+  const preco=Number(document.getElementById('cPreco').value);
+  const talhaoId=Number(document.getElementById('cTalhao').value);
+  if(!talhaoId){toast('Cadastre um talhão antes de registrar a colheita');return}
+  if(qtd<=0||preco<0){toast('Informe quantidade e preço válidos');return}
+  db.colheitas.push({
+    id:Date.now(),
+    data:document.getElementById('cData').value,
+    talhaoId,
+    cor:document.getElementById('cCor').value,
+    qtd,
+    precoUnitario:preco,
+    tamanhoHaste:document.getElementById('cHaste').value,
+    tamanhoBotao:document.getElementById('cBotao').value,
+    obs:document.getElementById('cObs').value
+  });
+  save();hideForm('harvestForm');e.target.reset();render();
+initSupabase();
+loadTalhoesFromSupabase();
+loadProdutosFromSupabase();
+loadRegistrosFromSupabase();
+loadRecomendacoesFromSupabase();
+loadAplicacoesFromSupabase();renderHarvestDashboard();toast('Colheita registrada')
+}
+function deleteHarvest(id){
+  if(!confirm('Excluir este registro de colheita?')) return;
+  db.colheitas=db.colheitas.filter(x=>x.id!==id);save();render();renderHarvestDashboard();toast('Registro excluído')
+}
+function renderHarvestTable(){
+  const rows=db.colheitas.slice().sort((a,b)=>b.data.localeCompare(a.data)||b.id-a.id);
+  const el=document.getElementById('harvestTable'); if(!el)return;
+  el.innerHTML=rows.map(c=>`<tr>
+    <td>${fmt(c.data)}</td><td>${esc(tname(c.talhaoId))}</td><td>${esc(c.cor)}</td>
+    <td>${c.qtd}</td><td>${brl(c.precoUnitario)}</td><td>${esc(c.tamanhoHaste)}</td>
+    <td>${esc(c.tamanhoBotao)}</td><td><b>${brl(c.qtd*c.precoUnitario)}</b></td>
+    <td><button class="btn danger" type="button" onclick="deleteHarvest(${c.id})">Excluir</button></td>
+  </tr>`).join('')||emptyRow(9,'Nenhum registro de colheita cadastrado.')
+}
+function renderHarvestDashboard(){
+  const filter=document.getElementById('harvestMonthFilter');
+  if(!filter)return;
+  if(!filter.value)filter.value=today.slice(0,7);
+  const mk=filter.value;
+  const rows=db.colheitas.filter(c=>monthKey(c.data)===mk);
+  const totalHastes=rows.reduce((s,c)=>s+Number(c.qtd||0),0);
+  const totalValor=rows.reduce((s,c)=>s+Number(c.qtd||0)*Number(c.precoUnitario||0),0);
+  const precoMedio=totalHastes?totalValor/totalHastes:0;
+  const byTalhao={}; const valueTalhao={}; const byHaste={}; const byColor={};
+  rows.forEach(c=>{
+    const t=tname(c.talhaoId); byTalhao[t]=(byTalhao[t]||0)+c.qtd; valueTalhao[t]=(valueTalhao[t]||0)+c.qtd*c.precoUnitario;
+    byHaste[c.tamanhoHaste]=(byHaste[c.tamanhoHaste]||0)+c.qtd; byColor[c.cor]=(byColor[c.cor]||0)+c.qtd;
+  });
+  const best=Object.entries(byTalhao).sort((a,b)=>b[1]-a[1])[0];
+  document.getElementById('hkHastes').textContent=totalHastes.toLocaleString('pt-BR');
+  document.getElementById('hkValor').textContent=brl(totalValor);
+  document.getElementById('hkPrecoMedio').textContent=brl(precoMedio);
+  document.getElementById('hkTalhaoDestaque').textContent=best?best[0]:'-';
+  document.getElementById('hkTalhaoQtd').textContent=best?`${best[1].toLocaleString('pt-BR')} hastes`:'0 hastes';
+  document.getElementById('hkCores').textContent=Object.keys(byColor).length;
+
+  const renderBars=(obj,id,formatFn=x=>x.toLocaleString('pt-BR'))=>{
+    const entries=Object.entries(obj).sort((a,b)=>b[1]-a[1]); const max=Math.max(1,...entries.map(x=>x[1]));
+    document.getElementById(id).innerHTML=entries.length?`<div class="bar-list">${entries.map(([k,v])=>`<div class="bar-row"><b>${esc(k)}</b><div class="bar-track"><div class="bar-fill" style="width:${v/max*100}%"></div></div><span style="text-align:right">${formatFn(v)}</span></div>`).join('')}</div>`:'<div class="empty">Sem registros no período.</div>';
+  };
+  renderBars(byTalhao,'harvestByTalhao');
+  renderBars(valueTalhao,'harvestValueByTalhao',brl);
+  renderBars(byHaste,'harvestByHaste');
+  renderBars(byColor,'harvestByColor');
+
+  const rec=db.colheitas.slice().sort((a,b)=>b.data.localeCompare(a.data)||b.id-a.id).slice(0,10);
+  document.getElementById('recentHarvests').innerHTML=rec.length?`<table class="table"><thead><tr><th>Data</th><th>Talhão</th><th>Cor</th><th>Hastes</th><th>Total</th></tr></thead><tbody>${rec.map(c=>`<tr><td>${fmt(c.data)}</td><td>${esc(tname(c.talhaoId))}</td><td>${esc(c.cor)}</td><td>${c.qtd}</td><td>${brl(c.qtd*c.precoUnitario)}</td></tr>`).join('')}</tbody></table>`:'<div class="empty">Nenhuma colheita registrada.</div>';
+}
+
+
+function donutChart(elId,labelId,entries,total){
+  const el=document.getElementById(elId), lab=document.getElementById(labelId);
+  if(!el)return;
+  if(!total){el.style.background='conic-gradient(#eee 0deg 360deg)';lab.innerHTML='<b style="font-size:26px">0</b><div style="font-size:12px;color:#777">Total</div>';return}
+  const colors=['#59a953','#e7b52e','#4d8ee8','#e05252','#8f5bdb','#f08b3e'];
+  let cur=0, parts=[];
+  entries.forEach((e,i)=>{const deg=e.value/total*360;parts.push(`${colors[i%colors.length]} ${cur}deg ${cur+deg}deg`);cur+=deg});
+  el.style.background=`conic-gradient(${parts.join(',')})`;
+  lab.innerHTML=`<b style="font-size:26px">${total.toLocaleString('pt-BR')}</b><div style="font-size:12px;color:#777">Total</div>`;
+}
+function svgBars(id,entries,color,formatter){
+  const svg=document.getElementById(id);if(!svg)return;
+  if(!entries.length){svg.innerHTML='<text x="260" y="120" text-anchor="middle" fill="#777" font-size="14">Sem dados no período.</text>';return}
+  const W=520,H=230,ml=42,mr=18,mt=18,mb=35,max=Math.max(1,...entries.map(e=>e.value)),gap=(W-ml-mr)/entries.length,bw=gap*.58;
+  let s=`<line x1="${ml}" y1="${H-mb}" x2="${W-mr}" y2="${H-mb}" stroke="#ddd"/>`;
+  entries.forEach((e,i)=>{const h=(H-mb-mt)*e.value/max,x=ml+i*gap+(gap-bw)/2,y=H-mb-h;
+    s+=`<rect x="${x}" y="${y}" width="${bw}" height="${h}" rx="7" fill="${color}"/>`;
+    s+=`<text x="${x+bw/2}" y="${y-6}" text-anchor="middle" fill="#444" font-size="10">${esc(formatter?formatter(e.value):e.value)}</text>`;
+    s+=`<text x="${x+bw/2}" y="${H-11}" text-anchor="middle" fill="#666" font-size="11">${esc(e.label)}</text>`;
+  }); svg.innerHTML=s;
+}
+function svgHBar(id,entries,color,formatter){
+  const svg=document.getElementById(id);if(!svg)return;
+  if(!entries.length){svg.innerHTML='<text x="260" y="120" text-anchor="middle" fill="#777" font-size="14">Sem dados.</text>';return}
+  const W=520,H=230,ml=150,mr=30,mt=16,mb=14,max=Math.max(1,...entries.map(e=>e.value)),rh=(H-mt-mb)/entries.length; let s='';
+  entries.forEach((e,i)=>{const y=mt+i*rh+4,w=(W-ml-mr)*e.value/max;
+    s+=`<text x="${ml-8}" y="${y+14}" text-anchor="end" fill="#666" font-size="11">${esc(e.label)}</text><rect x="${ml}" y="${y}" width="${Math.max(3,w)}" height="${rh-10}" rx="6" fill="${color}"/><text x="${ml+w+7}" y="${y+14}" fill="#444" font-size="11">${esc(formatter?formatter(e.value):e.value)}</text>`;
+  }); svg.innerHTML=s;
+}
+function svgStacked(id,rows){
+  const svg=document.getElementById(id);if(!svg)return;
+  if(!rows.length){svg.innerHTML='<text x="260" y="120" text-anchor="middle" fill="#777" font-size="14">Sem dados.</text>';return}
+  const W=520,H=230,ml=58,mr=18,mt=18,mb=25,max=Math.max(1,...rows.map(r=>r.total)),rh=(H-mt-mb)/rows.length; let s='';
+  rows.forEach((r,i)=>{let x=ml,y=mt+i*rh+4,full=W-ml-mr;
+    [['resolved','#59a953'],['partial','#e7b52e'],['monitor','#4d8ee8'],['no','#e05252']].forEach(([k,c])=>{const w=full*r[k]/max;if(w>0){s+=`<rect x="${x}" y="${y}" width="${w}" height="${rh-10}" rx="4" fill="${c}"/>`;x+=w}});
+    s+=`<text x="${ml-8}" y="${y+14}" text-anchor="end" fill="#666" font-size="11">${esc(r.label)}</text>`;
+  }); svg.innerHTML=s;
+}
+function svgLine(id,points){
+  const svg=document.getElementById(id);if(!svg)return;
+  if(!points.length){svg.innerHTML='<text x="380" y="125" text-anchor="middle" fill="#777" font-size="14">Sem registros no período.</text>';return}
+  const W=760,H=250,ml=45,mr=18,mt=18,mb=35,max=Math.max(1,...points.map(p=>p.value)),xgap=points.length>1?(W-ml-mr)/(points.length-1):0;
+  let path='',s=`<line x1="${ml}" y1="${H-mb}" x2="${W-mr}" y2="${H-mb}" stroke="#ddd"/>`;
+  points.forEach((p,i)=>{const x=ml+i*xgap,y=H-mb-(H-mb-mt)*p.value/max;path+=(i?'L':'M')+x+' '+y});
+  s+=`<path d="${path}" fill="none" stroke="#3d9a4a" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>`;
+  points.forEach((p,i)=>{const x=ml+i*xgap,y=H-mb-(H-mb-mt)*p.value/max;s+=`<circle cx="${x}" cy="${y}" r="4.5" fill="#3d9a4a"/><text x="${x}" y="${H-12}" text-anchor="middle" fill="#666" font-size="10">${esc(p.label)}</text>`});
+  svg.innerHTML=s;
+}
+function renderManejoDashboard(){
+  const filter=document.getElementById('manejoMonthFilter');if(!filter)return;
+  if(!filter.value)filter.value=today.slice(0,7);const mk=filter.value;
+  const occ=db.registros.filter(r=>monthKey(r.data)===mk), recs=db.recomendacoes.filter(r=>monthKey(r.data)===mk), apps=db.aplicacoes.filter(a=>monthKey(a.data)===mk);
+  const resolved=occ.filter(o=>o.status==='RESOLVIDO').length, mon=apps.filter(a=>a.resultado==='EM_MONITORAMENTO').length, partial=apps.filter(a=>a.resultado==='PARCIAL').length, no=apps.filter(a=>a.resultado==='NAO_RESOLVIDO').length;
+  const rate=occ.length?Math.round(resolved/occ.length*100):0;
+  document.getElementById('mkOcc').textContent=occ.length;
+  document.getElementById('mkOccNote').textContent=`${occ.filter(o=>o.status!=='RESOLVIDO').length} abertas`;
+  document.getElementById('mkRec').textContent=recs.filter(r=>r.status!=='APLICADA').length;
+  document.getElementById('mkApp').textContent=apps.length;
+  document.getElementById('mkRate').textContent=rate+'%';
+  document.getElementById('mkRateNote').textContent=rate>=80?'Acima da meta':'Meta 80%';
+  document.getElementById('mkMon').textContent=mon;
+
+  const statusEntries=[['Resolvidos',resolved],['Parciais',partial],['Em monitoramento',mon],['Não resolvidos',no]].filter(x=>x[1]>0).map(x=>({label:x[0],value:x[1]}));
+  const total=statusEntries.reduce((s,x)=>s+x.value,0);
+  donutChart('manejoDonut','manejoDonutLabel',statusEntries,total);
+  const lc=['#59a953','#e7b52e','#4d8ee8','#e05252'];
+  document.getElementById('manejoLegend').innerHTML=statusEntries.map((x,i)=>`<div class="legend-item"><span class="legend-dot" style="background:${lc[i]}"></span>${esc(x.label)}<b style="margin-left:auto">${x.value}</b></div>`).join('');
+
+  const pending={};recs.filter(r=>r.status!=='APLICADA').forEach(r=>{const t=tname(r.talhaoId);pending[t]=(pending[t]||0)+1});
+  svgBars('manejoPendingBars',Object.entries(pending).sort((a,b)=>b[1]-a[1]).map(([label,value])=>({label,value})),'#d84848');
+
+  const stacks={};occ.forEach(o=>{const t=tname(o.talhaoId);stacks[t]??={label:t,resolved:0,partial:0,monitor:0,no:0,total:0};stacks[t].total++;const a=apps.find(x=>x.registroId===o.id);if(o.status==='RESOLVIDO')stacks[t].resolved++;else if(a?.resultado==='PARCIAL')stacks[t].partial++;else if(a?.resultado==='NAO_RESOLVIDO')stacks[t].no++;else stacks[t].monitor++});
+  svgStacked('manejoStacked',Object.values(stacks));
+
+  const pct=Math.max(0,Math.min(100,rate));
+  document.getElementById('manejoGaugeArc').setAttribute('stroke-dasharray',`${pct} ${100-pct}`);
+  const angle=-90+pct*1.8, rad=angle*Math.PI/180, x2=130+82*Math.cos(rad), y2=120+82*Math.sin(rad);
+  document.getElementById('manejoNeedle').setAttribute('x2',x2);document.getElementById('manejoNeedle').setAttribute('y2',y2);document.getElementById('manejoGaugeValue').textContent=rate+'%';
+
+  const problems={};occ.forEach(o=>problems[o.nome]=(problems[o.nome]||0)+1);
+  svgHBar('manejoTopProblems',Object.entries(problems).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([label,value])=>({label,value})),'#8f5bdb');
+
+  const pr={Alto:0,Médio:0,Baixo:0};occ.filter(o=>o.status!=='RESOLVIDO').forEach(o=>pr[o.prioridade]=(pr[o.prioridade]||0)+1);const ptotal=Object.values(pr).reduce((a,b)=>a+b,0)||1;
+  document.getElementById('manejoPriorities').innerHTML=Object.entries(pr).map(([k,v],i)=>`<div style="margin:14px 0"><div style="display:flex;justify-content:space-between;font-size:13px"><b>${esc(k)}</b><span>${v}</span></div><div class="progress" style="margin-top:7px"><span style="width:${v/ptotal*100}%;background:${i===0?'#e05252':i===1?'#e7b52e':'#59a953'}"></span></div></div>`).join('');
+
+  const priorityRank={Alto:0,Médio:1,Baixo:2};
+  const attention=occ.filter(o=>o.status!=='RESOLVIDO').sort((a,b)=>(priorityRank[a.prioridade]??3)-(priorityRank[b.prioridade]??3)).slice(0,10);
+  document.getElementById('manejoAttention').innerHTML=attention.length?attention.map(o=>{const a=apps.find(x=>x.registroId===o.id);return `<div class="attention-row"><div><b>${esc(o.nome)}</b><div class="sub">${esc(o.categoria||'')}</div></div><div>${esc(tname(o.talhaoId))}</div><div>${priorityBadge(o.prioridade)}</div><div>${statusBadge(a?.resultado||'ABERTO')}</div><div>${a?.reavaliacao?fmt(a.reavaliacao):'-'}</div></div>`}).join(''):'<div class="empty">Nenhuma ocorrência pendente de atenção.</div>';
+}
+function renderHarvestDashboard(){
+  const filter=document.getElementById('harvestMonthFilter');if(!filter)return;
+  if(!filter.value)filter.value=today.slice(0,7);const mk=filter.value,rows=db.colheitas.filter(c=>monthKey(c.data)===mk);
+  const totalHastes=rows.reduce((s,c)=>s+Number(c.qtd||0),0),totalValor=rows.reduce((s,c)=>s+Number(c.qtd||0)*Number(c.precoUnitario||0),0),precoMedio=totalHastes?totalValor/totalHastes:0;
+  const byTalhao={},byValue={},byHaste={},byColor={},byDay={};rows.forEach(c=>{const t=tname(c.talhaoId);byTalhao[t]=(byTalhao[t]||0)+c.qtd;byValue[t]=(byValue[t]||0)+c.qtd*c.precoUnitario;byHaste[c.tamanhoHaste]=(byHaste[c.tamanhoHaste]||0)+c.qtd;byColor[c.cor]=(byColor[c.cor]||0)+c.qtd;byDay[c.data]=(byDay[c.data]||0)+c.qtd});
+  const best=Object.entries(byTalhao).sort((a,b)=>b[1]-a[1])[0];
+  document.getElementById('hkHastes').textContent=totalHastes.toLocaleString('pt-BR');document.getElementById('hkValor').textContent=brl(totalValor);document.getElementById('hkPrecoMedio').textContent=brl(precoMedio);document.getElementById('hkTalhaoDestaque').textContent=best?best[0]:'-';document.getElementById('hkTalhaoQtd').textContent=best?`${best[1].toLocaleString('pt-BR')} hastes`:'0 hastes';document.getElementById('hkCores').textContent=Object.keys(byColor).length;
+  svgBars('harvestBars',Object.entries(byTalhao).sort((a,b)=>b[1]-a[1]).map(([label,value])=>({label,value})),'#59a953');
+  svgBars('harvestValueBars',Object.entries(byValue).sort((a,b)=>b[1]-a[1]).map(([label,value])=>({label,value})),'#7d57c8',v=>brl(v));
+  const hEntries=Object.entries(byHaste).sort((a,b)=>b[1]-a[1]).map(([label,value])=>({label,value}));const cEntries=Object.entries(byColor).sort((a,b)=>b[1]-a[1]).slice(0,6).map(([label,value])=>({label,value}));
+  donutChart('harvestHasteDonut','harvestHasteLabel',hEntries,totalHastes);donutChart('harvestColorDonut','harvestColorLabel',cEntries,cEntries.reduce((s,x)=>s+x.value,0));
+  const colors=['#59a953','#4d8ee8','#e7b52e','#8f5bdb','#e05252','#f08b3e'];
+  document.getElementById('harvestHasteLegend').innerHTML=hEntries.map((x,i)=>`<div class="legend-item"><span class="legend-dot" style="background:${colors[i%colors.length]}"></span>${esc(x.label)}<b style="margin-left:auto">${x.value.toLocaleString('pt-BR')}</b></div>`).join('');
+  document.getElementById('harvestColorLegend').innerHTML=cEntries.map((x,i)=>`<div class="legend-item"><span class="legend-dot" style="background:${colors[i%colors.length]}"></span>${esc(x.label)}<b style="margin-left:auto">${x.value.toLocaleString('pt-BR')}</b></div>`).join('');
+  const days=Object.keys(byDay).sort().map(d=>({label:d.slice(8,10),value:byDay[d]}));svgLine('harvestTrend',days);
+  const rec=db.colheitas.slice().sort((a,b)=>b.data.localeCompare(a.data)||b.id-a.id).slice(0,10);
+  document.getElementById('recentHarvests').innerHTML=rec.length?`<table class="table"><thead><tr><th>Data</th><th>Talhão</th><th>Cor</th><th>Tamanho haste</th><th>Hastes</th><th>Preço</th><th>Total</th></tr></thead><tbody>${rec.map(c=>`<tr><td>${fmt(c.data)}</td><td>${esc(tname(c.talhaoId))}</td><td>${esc(c.cor)}</td><td>${esc(c.tamanhoHaste)}</td><td>${c.qtd}</td><td>${brl(c.precoUnitario)}</td><td><b>${brl(c.qtd*c.precoUnitario)}</b></td></tr>`).join('')}</tbody></table>`:'<div class="empty">Nenhuma colheita registrada.</div>';
+}
+
+function render(){
+  if(document.getElementById('talhoesTable')) document.getElementById('talhoesTable').innerHTML=db.talhoes.map(t=>`<tr><td><b>${esc(t.nome)}</b></td><td>${t.area}</td><td>${esc(t.variedade||'-')}</td><td>${t.plantas||'-'}</td></tr>`).join('')||emptyRow(4,'Nenhum talhão cadastrado.');
+  if(document.getElementById('produtosTable')) document.getElementById('produtosTable').innerHTML=db.produtos.map(p=>`<tr><td><b>${esc(p.nome)}</b></td><td>${esc(p.tipo)}</td><td>${esc(p.ativo||'-')}</td><td>${esc(p.unidade||'-')}</td></tr>`).join('')||emptyRow(4,'Nenhum produto cadastrado.');
+  if(document.getElementById('registrosTable')) document.getElementById('registrosTable').innerHTML=db.registros.slice().reverse().map(g=>`<tr><td>${fmt(g.data)}</td><td>${tname(g.talhaoId)}</td><td>${rtype(g.id)}</td><td><b>${esc(g.nome)}</b></td><td>${esc(g.categoria||'-')}</td><td>${priorityBadge(g.prioridade)}</td><td>${statusBadge(g.status||'ABERTO')}</td><td><button class="btn" type="button" onclick="openRecommendationForRegistro(${g.id});return false;">Recomendar</button></td></tr>`).join('')||emptyRow(8,'Nenhuma identificação cadastrada.');
+  if(document.getElementById('recTable')) document.getElementById('recTable').innerHTML=db.recomendacoes.slice().reverse().map(r=>`<tr><td>${fmt(r.data)}</td><td>${tname(r.talhaoId)}</td><td>${esc(rname(r.registroId))}</td><td>${recProductsText(r)}</td><td>${statusBadge(r.status)}</td><td><button class="btn" type="button" onclick="openApplication(${r.id})">Aplicar</button></td></tr>`).join('')||emptyRow(6,'Nenhuma recomendação cadastrada.');
+  if(document.getElementById('appsTable')) document.getElementById('appsTable').innerHTML=db.aplicacoes.slice().reverse().map(a=>`<tr><td>${fmt(a.data)}</td><td>${tname(a.talhaoId)}</td><td>${esc(rname(a.registroId))}</td><td>${(a.items||[]).map(i=>`${esc(pname(i.produtoId))} (${i.qtd} ${esc(i.unidade)})`).join('<br>')}</td><td>${statusBadge(a.resultado)}</td><td>${a.fotos?.length||0}</td></tr>`).join('')||emptyRow(6,'Nenhuma aplicação registrada.');
+  if(document.getElementById('recentApps')) document.getElementById('recentApps').innerHTML=db.aplicacoes.slice().reverse().slice(0,6).map(a=>`<div style="padding:10px 0;border-bottom:1px solid var(--line)"><b>${tname(a.talhaoId)}</b> — ${esc(rname(a.registroId)||'-')}<div class="sub">${fmt(a.data)} · ${(a.items||[]).length} produto(s) · ${a.fotos?.length||0} foto(s)</div></div>`).join('')||'<div class="empty">Nenhuma aplicação ainda.</div>';
+  if(document.getElementById('history')) document.getElementById('history').innerHTML=db.aplicacoes.slice().reverse().map(a=>`<div class="card" style="margin-bottom:12px"><div class="section-title"><h2>${esc(rname(a.registroId))} — ${tname(a.talhaoId)}</h2>${statusBadge(a.resultado)}</div><div class="sub">${fmt(a.data)} ${a.hora||''} · ${(a.items||[]).map(i=>`${esc(pname(i.produtoId))}: ${i.qtd} ${esc(i.unidade)}`).join(' · ')}</div><p>${esc(a.resultadoObs||a.obs||'')}</p><div class="photo-grid">${(a.fotos||[]).map(f=>`<div class="photo"><img src="${f.data}" alt="${esc(f.name)}"><small>${esc(f.name)}</small></div>`).join('')}</div></div>`).join('')||'<div class="empty">O histórico aparecerá após a primeira aplicação.</div>';
+  renderHarvestTable();
+  renderManejoDashboard();
+  renderHarvestDashboard();
+}
+function renderPendingChart(){const vals=db.talhoes.map(t=>({nome:t.nome,count:db.recomendacoes.filter(r=>r.talhaoId===t.id&&r.status!=='APLICADA').length}));const max=Math.max(1,...vals.map(x=>x.count));document.getElementById('pendingChart').innerHTML=vals.map(x=>`<div style="display:grid;grid-template-columns:52px 1fr 34px;gap:8px;align-items:center;margin:10px 0"><b>${esc(x.nome)}</b><div style="height:18px;background:#f0ecee;border-radius:99px;overflow:hidden"><div style="width:${x.count/max*100}%;height:100%;background:var(--accent);border-radius:99px"></div></div><b style="text-align:right">${x.count}</b></div>`).join('')}
+function renderMonitoring(){const total=db.aplicacoes.length,res=db.aplicacoes.filter(a=>a.resultado==='RESOLVIDO').length,parc=db.aplicacoes.filter(a=>a.resultado==='PARCIAL').length,mon=db.aplicacoes.filter(a=>a.resultado==='EM_MONITORAMENTO').length,nr=db.aplicacoes.filter(a=>a.resultado==='NAO_RESOLVIDO').length;document.getElementById('monitoringPulse').innerHTML=`<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px"><div style="text-align:center"><div style="font-size:25px;font-weight:800">${res}</div><small>Resolvidos</small></div><div style="text-align:center"><div style="font-size:25px;font-weight:800">${parc}</div><small>Parciais</small></div><div style="text-align:center"><div style="font-size:25px;font-weight:800">${mon}</div><small>Monitorando</small></div><div style="text-align:center"><div style="font-size:25px;font-weight:800">${nr}</div><small>Não resolvidos</small></div></div><div style="height:12px;background:#eee;border-radius:99px;overflow:hidden;display:flex"><div style="width:${total?res/total*100:0}%;background:var(--ok)"></div><div style="width:${total?parc/total*100:0}%;background:#c9942d"></div><div style="width:${total?mon/total*100:0}%;background:#b08d45"></div><div style="width:${total?nr/total*100:0}%;background:var(--danger)"></div></div><div class="sub" style="margin-top:10px">${total?`Taxa de resolução atual: <b>${Math.round(res/total*100)}%</b>`:'Registre aplicações para ativar o monitoramento.'}</div>`;const list=db.aplicacoes.filter(a=>a.resultado!=='RESOLVIDO').slice().reverse().slice(0,6);document.getElementById('monitoringList').innerHTML=list.length?list.map(a=>`<div style="padding:10px 0;border-bottom:1px solid var(--line)"><b>${tname(a.talhaoId)}</b> — ${esc(rname(a.registroId))}<div class="sub">${resultLabel(a.resultado)} · ${a.reavaliacao?`reavaliar ${fmt(a.reavaliacao)}`:'sem data de reavaliação'}</div></div>`).join(''):'<div class="empty">Nenhum caso aguardando monitoramento.</div>'}
+function renderHistory(){document.getElementById('history').innerHTML=db.aplicacoes.slice().reverse().map(a=>`<div class="card" style="margin-bottom:12px"><div class="section-title"><h2>${esc(rname(a.registroId))} — ${tname(a.talhaoId)}</h2>${statusBadge(a.resultado)}</div><div class="sub">${fmt(a.data)} ${a.hora||''} · ${(a.items||[]).map(i=>`${esc(pname(i.produtoId))}: ${i.qtd} ${esc(i.unidade)}`).join(' · ')}</div><p>${esc(a.resultadoObs||a.obs||'')}</p>${a.indice?`<div class="sub">Índice observado: <b>${a.indice}%</b></div>`:''}<div class="photo-grid">${(a.fotos||[]).map(f=>`<div class="photo"><img src="${f.data}" alt="${esc(f.name)}"><small>${esc(f.name)}</small></div>`).join('')}</div></div>`).join('')||'<div class="empty">O histórico aparecerá após a primeira aplicação.</div>'}
+
+
+let supabaseClient = null;
+function initSupabase(){
+  try{
+    if(window.ROSEIRAL_SUPABASE_URL && window.ROSEIRAL_SUPABASE_PUBLISHABLE_KEY &&
+       !window.ROSEIRAL_SUPABASE_URL.includes('COLOQUE_') &&
+       !window.ROSEIRAL_SUPABASE_PUBLISHABLE_KEY.includes('COLOQUE_')){
+      supabaseClient = window.supabase.createClient(window.ROSEIRAL_SUPABASE_URL,window.ROSEIRAL_SUPABASE_PUBLISHABLE_KEY);
+    }
+  }catch(err){ supabaseClient=null; }
+}
+function setSupabaseStatus(kind,msg){
+  const el=document.getElementById('supabaseStatus'); if(!el)return;
+  el.textContent=msg;
+  el.style.color=kind==='ok'?'var(--ok)':kind==='err'?'var(--danger)':'var(--muted)';
+  el.style.background=kind==='ok'?'#eef8f0':kind==='err'?'#fff0f0':'#fafafa';
+}
+async function testSupabaseConnection(){
+  initSupabase();
+  if(!supabaseClient){setSupabaseStatus('err','Banco online: configuração do Supabase ainda não foi preenchida.');toast('Preencha o supabase-config.js');return}
+  const {data,error}=await supabaseClient.from('Talhões').select('id,nome,area_ha,variedade,numero_plantas').order('id',{ascending:true}).limit(1);
+  if(error){setSupabaseStatus('err','Banco online: erro ao consultar Talhões. Veja a mensagem no navegador.');console.error(error);toast('Supabase respondeu com erro');return}
+  setSupabaseStatus('ok',`Banco online: conectado ✓ · ${data.length} registro(s) encontrado(s)`);
+  await loadTalhoesFromSupabase();
+}
+async function loadTalhoesFromSupabase(){
+  initSupabase();
+  if(!supabaseClient){setSupabaseStatus('err','Banco online: configuração pendente; usando dados locais.');return}
+  const {data,error}=await supabaseClient.from('Talhões').select('id,nome,area_ha,variedade,numero_plantas').order('id',{ascending:true});
+  if(error){setSupabaseStatus('err','Banco online: sem acesso à tabela Talhões. Verifique as políticas RLS.');console.error(error);return}
+  if(Array.isArray(data)){
+    // Supabase é a fonte oficial: mesmo que esteja vazio, não mantemos dados de exemplo locais.
+    db.talhoes=data.map(t=>({id:t.id,nome:t.nome,area:Number(t.area_ha||0),variedade:t.variedade||'',plantas:Number(t.numero_plantas||0)}));
+    save();
+  }
+  setSupabaseStatus('ok',`Banco online: conectado ✓ · ${data.length} talhão(ões)`);
+  if(typeof render==='function')render();
+}
+async function saveTalhao(e){
+  e.preventDefault();
+  const novo={nome:tNome.value.trim(),area:Number(tArea.value),variedade:tVariedade.value.trim(),plantas:Number(tPlantas.value)||0};
+  if(!novo.nome){toast('Informe o nome do talhão');return}
+  initSupabase();
+  if(supabaseClient){
+    const {data,error}=await supabaseClient.from('Talhões').insert({
+      nome:novo.nome,area_ha:novo.area,variedade:novo.variedade,numero_plantas:novo.plantas
+    }).select('id,nome,area_ha,variedade,numero_plantas').single();
+    if(error){
+      console.error(error);
+      setSupabaseStatus('err','Banco online: não foi possível salvar o talhão. Verifique RLS/políticas.');
+      toast('Erro ao salvar no Supabase');return
+    }
+    db.talhoes.push({id:data.id,nome:data.nome,area:Number(data.area_ha||0),variedade:data.variedade||'',plantas:Number(data.numero_plantas||0)});
+    save();hideForm('talhaoForm');e.target.reset();render();toast('Talhão salvo no banco online');
+  }else{
+    db.talhoes.push({id:Date.now(),...novo});save();hideForm('talhaoForm');e.target.reset();render();toast('Talhão salvo localmente');
+  }
+}
+
+async function loadProdutosFromSupabase(){
+  initSupabase();
+  const status=document.getElementById('supabaseProdutosStatus');
+  if(!supabaseClient){
+    if(status)status.textContent='Produtos online: configuração do Supabase pendente.';
+    return;
+  }
+  const {data,error}=await supabaseClient.from('Produtos').select('id,nome,tipo,ingrediente,unidade').order('id',{ascending:true});
+  if(error){
+    console.error(error);
+    if(status)status.textContent='Produtos online: erro ao consultar Produtos. Verifique as políticas RLS.';
+    return;
+  }
+  db.produtos=(data||[]).map(p=>({id:p.id,nome:p.nome||'',tipo:p.tipo||'Outro',ativo:p.ingrediente||'',ingrediente:p.ingrediente||'',unidade:p.unidade||''}));
+  save();
+  if(status)status.textContent=`Produtos online: conectado ✓ · ${db.produtos.length} produto(s)`;
+  render();
+}
+async function saveProduto(e){
+  e.preventDefault();
+  const novo={nome:pNome.value.trim(),tipo:pTipo.value,ingrediente:pAtivo.value.trim(),unidade:pUnidade.value.trim()};
+  if(!novo.nome){toast('Informe o nome do produto');return}
+  initSupabase();
+  if(supabaseClient){
+    const {data,error}=await supabaseClient.from('Produtos').insert({nome:novo.nome,tipo:novo.tipo,ingrediente:novo.ingrediente,unidade:novo.unidade}).select('id,nome,tipo,ingrediente,unidade').single();
+    if(error){
+      console.error(error);
+      const status=document.getElementById('supabaseProdutosStatus');
+      if(status)status.textContent='Produtos online: não foi possível salvar. Verifique RLS.';
+      toast('Erro ao salvar produto no Supabase');return;
+    }
+    db.produtos.push({id:data.id,nome:data.nome,tipo:data.tipo,ativo:data.ingrediente||'',ingrediente:data.ingrediente||'',unidade:data.unidade||''});
+    save();hideForm('produtoForm');e.target.reset();render();toast('Produto salvo no banco online');
+  }else{
+    db.produtos.push({id:Date.now(),nome:novo.nome,tipo:novo.tipo,ativo:novo.ingrediente,ingrediente:novo.ingrediente,unidade:novo.unidade});
+    save();hideForm('produtoForm');e.target.reset();render();toast('Produto salvo localmente');
+  }
+}
+async function loadRegistrosFromSupabase(){
+  initSupabase();
+  const status=document.getElementById('supabaseRegistrosStatus');
+  if(!supabaseClient){
+    if(status)status.textContent='Registros online: configuração do Supabase pendente.';
+    return;
+  }
+  const {data,error}=await supabaseClient.from('Pragas_Adubacao')
+    .select('id,created_at,talhao_id,tipo,nome,categoria,prioridade,data_identificacao,observacoes,status')
+    .order('id',{ascending:true});
+  if(error){
+    console.error(error);
+    if(status)status.textContent='Registros online: erro ao consultar. Verifique as políticas RLS.';
+    return;
+  }
+  db.registros=(data||[]).map(r=>({
+    id:r.id,created_at:r.created_at,talhaoId:r.talhao_id,tipo:r.tipo||'PRAGA',
+    nome:r.nome||'',categoria:r.categoria||'',prioridade:r.prioridade||'BAIXO',
+    data:r.data_identificacao||r.created_at?.slice(0,10)||today,
+    obs:r.observacoes||'',status:r.status||'ABERTO'
+  }));
+  save();
+  if(status)status.textContent=`Registros online: conectado ✓ · ${db.registros.length} ocorrência(s)`;
+  render();
+}
+
+async function openRegistroForm(){
+  await loadTalhoesFromSupabase();
+  populateSelect('gTalhao',db.talhoes,'nome');
+  document.getElementById('gData').value=today;
+  document.getElementById('gPrioridade').value='MEDIO';
+  showForm('registroForm');
+}
+async function saveRegistro(e){
+  e.preventDefault();
+  const get=id=>document.getElementById(id);
+  const novo={
+    talhao_id:Number(get('gTalhao').value),
+    tipo:get('gTipo').value,
+    nome:get('gNome').value.trim(),
+    categoria:get('gCategoria').value.trim(),
+    prioridade:get('gPrioridade').value,
+    data_identificacao:get('gData').value,
+    observacoes:get('gObs').value.trim(),
+    status:'ABERTO'
+  };
+  if(!novo.talhao_id){toast('Selecione um talhão');return}
+  if(!novo.nome){toast('Informe a praga ou necessidade');return}
+  initSupabase();
+  if(supabaseClient){
+    const {data,error}=await supabaseClient.from('Pragas_Adubacao').insert(novo)
+      .select('id,created_at,talhao_id,tipo,nome,categoria,prioridade,data_identificacao,observacoes,status').single();
+    if(error){
+      console.error(error);
+      get('supabaseRegistrosStatus').textContent='Registros online: não foi possível salvar. Verifique RLS.';
+      toast('Erro ao salvar identificação no Supabase');return;
+    }
+    db.registros.push({
+      id:data.id,created_at:data.created_at,talhaoId:data.talhao_id,tipo:data.tipo,nome:data.nome,
+      categoria:data.categoria,prioridade:data.prioridade,data:data.data_identificacao,obs:data.observacoes,status:data.status
+    });
+    save();hideForm('registroForm');e.target.reset();render();toast('Identificação salva no banco online');
+  }else{
+    db.registros.push({
+      id:Date.now(),talhaoId:novo.talhao_id,tipo:novo.tipo,nome:novo.nome,categoria:novo.categoria,
+      prioridade:novo.prioridade,data:novo.data_identificacao,obs:novo.observacoes,status:'ABERTO'
+    });
+    save();hideForm('registroForm');e.target.reset();render();toast('Identificação salva localmente');
+  }
+}
+
+async function loadRecomendacoesFromSupabase(){
+  const status=document.getElementById('supabaseRecomendacoesStatus');
+  try{
+    if(status)status.textContent='Recomendações online: conectando...';
+    initSupabase();
+    if(!supabaseClient){
+      if(status)status.textContent='Recomendações online: Supabase não configurado.';
+      return;
+    }
+
+    const {data:recs,error:recError}=await supabaseClient
+      .from('Recomendacoes')
+      .select('id,created_at,registro_id,talhao_id,data_recomendacao,motivo,status,observacoes')
+      .order('id',{ascending:false});
+
+    if(recError) throw new Error('Recomendacoes: '+supabaseErrorText(recError));
+
+    const recIds=(recs||[]).map(r=>r.id);
+    let items=[];
+    if(recIds.length){
+      const {data:itemData,error:itemError}=await supabaseClient
+        .from('Recomendacao_Produtos')
+        .select('id,recomendacao_id,produto_id,dose,unidade,observacoes')
+        .in('recomendacao_id',recIds)
+        .order('id',{ascending:true});
+
+      if(itemError) throw new Error('Recomendacao_Produtos: '+supabaseErrorText(itemError));
+      items=itemData||[];
+    }
+
+    db.recomendacoes=(recs||[]).map(r=>({
+      id:r.id,
+      registroId:r.registro_id,
+      talhaoId:r.talhao_id,
+      data:r.data_recomendacao,
+      motivo:r.motivo||'',
+      obs:r.observacoes||'',
+      status:r.status||'PENDENTE',
+      items:items.filter(i=>Number(i.recomendacao_id)===Number(r.id)).map(i=>({
+        id:i.id,
+        produtoId:i.produto_id,
+        dose:Number(i.dose||0),
+        unidade:i.unidade||'',
+        observacoes:i.observacoes||''
+      }))
+    }));
+
+    save();
+    if(status)status.textContent=`Recomendações online: conectado ✓ · ${db.recomendacoes.length} recomendação(ões)`;
+    render();
+  }catch(err){
+    console.error(err);
+    if(status)status.textContent='Recomendações online: ERRO — '+(err?.message||String(err));
+  }
+}
+
+async function openRecommendation(){
+  await Promise.all([loadTalhoesFromSupabase(),loadProdutosFromSupabase(),loadRegistrosFromSupabase()]);
+  const available=db.registros.filter(r=>r.status!=='RESOLVIDO');
+  if(!available.length){toast('Não há identificações disponíveis para recomendar');return}
+  if(!db.produtos.length){toast('Cadastre pelo menos um produto antes de recomendar');return}
+  populateSelect('rRegistro',available,'nome');
+  populateSelect('rTalhao',db.talhoes,'nome');
+  document.getElementById('rData').value=today;
+  document.getElementById('recommendationItems').innerHTML='';
+  addRecommendationItem();
+  showForm('recForm');
+  syncRecommendationFromRegistro();
+}
+window.openRecommendationForRegistro = async function(id){
+  const registroId=Number(id);
+  await Promise.all([loadTalhoesFromSupabase(),loadProdutosFromSupabase(),loadRegistrosFromSupabase()]);
+  const g=db.registros.find(r=>r.id===registroId);
+  if(!g){toast('Identificação não encontrada');return false}
+  if(g.status==='RESOLVIDO'){toast('Esta identificação já foi resolvida');return false}
+  if(!db.produtos.length){toast('Cadastre pelo menos um produto antes de recomendar');return false}
+  showPage('recomendacoes');
+  const available=db.registros.filter(r=>r.status!=='RESOLVIDO');
+  populateSelect('rRegistro',available,'nome');
+  populateSelect('rTalhao',db.talhoes,'nome');
+  document.getElementById('rData').value=today;
+  document.getElementById('recommendationItems').innerHTML='';
+  addRecommendationItem();
+  document.getElementById('rRegistro').value=String(registroId);
+  syncRecommendationFromRegistro();
+  const form=document.getElementById('recForm');form.style.display='block';form.scrollIntoView({behavior:'smooth',block:'start'});
+  toast('Identificação selecionada para recomendação');
+  return false;
+}
+function syncRecommendationFromRegistro(){
+  const reg=document.getElementById('rRegistro');
+  const tal=document.getElementById('rTalhao');
+  const motivo=document.getElementById('rMotivo');
+  const banner=document.getElementById('selectedRegistroBanner');
+  const g=db.registros.find(x=>x.id===Number(reg.value));
+  if(!g)return;
+  tal.value=String(g.talhaoId);
+  motivo.value=`Atender a identificação: ${g.nome}. ${g.obs||''}`;
+  banner.innerHTML=`<b>Identificação selecionada:</b> ${esc(g.nome)} &nbsp;·&nbsp; <b>Talhão:</b> ${esc(tname(g.talhaoId))} &nbsp;·&nbsp; <b>Prioridade:</b> ${esc(g.prioridade||'-')}`;
+  banner.style.display='block';
+}
+function addRecommendationItem(productId='',dose='',unidade=''){const wrap=document.getElementById('recommendationItems');const row=document.createElement('div');row.className='card';row.style.marginBottom='10px';row.innerHTML=`<div class="formgrid"><div class="field"><label>Produto</label><select class="rec-produto" required>${db.produtos.map(p=>`<option value="${p.id}" ${String(productId)===String(p.id)?'selected':''}>${esc(p.nome)} — ${esc(p.tipo)}</option>`).join('')}</select></div><div class="field"><label>Dose</label><input class="rec-dose" type="number" step="0.001" value="${esc(dose)}" required></div><div class="field"><label>Unidade da dose</label><input class="rec-unidade" value="${esc(unidade)}" placeholder="kg/ha, L/ha, g/planta..." required></div></div><div class="actions"><button type="button" class="btn danger" onclick="this.closest('.card').remove()">Remover produto</button></div>`;wrap.appendChild(row)}
+function getRecommendationItems(){return [...document.querySelectorAll('#recommendationItems .card')].map(row=>({produtoId:Number(row.querySelector('.rec-produto').value),dose:Number(row.querySelector('.rec-dose').value),unidade:row.querySelector('.rec-unidade').value.trim()})).filter(x=>x.produtoId&&x.dose>0&&x.unidade)}
+async function saveRecommendation(e){
+  e.preventDefault();
+  const items=getRecommendationItems();
+  const reg=document.getElementById('rRegistro'),tal=document.getElementById('rTalhao');
+  const data=document.getElementById('rData'),motivo=document.getElementById('rMotivo'),obs=document.getElementById('rObs');
+  if(!reg.value||!tal.value){toast('Selecione a identificação e o talhão');return}
+  if(!items.length){toast('Adicione pelo menos um produto');return}
+  const ids=items.map(i=>i.produtoId);
+  if(new Set(ids).size!==ids.length){toast('Não repita o mesmo produto na recomendação');return}
+
+  initSupabase();
+  const recPayload={
+    registro_id:Number(reg.value),
+    talhao_id:Number(tal.value),
+    data_recomendacao:data.value,
+    motivo:motivo.value.trim(),
+    status:'PENDENTE',
+    observacoes:obs.value.trim()
+  };
+  if(supabaseClient){
+    const {data:rec,error}=await supabaseClient.from('Recomendacoes').insert(recPayload)
+      .select('id,created_at,registro_id,talhao_id,data_recomendacao,motivo,status,observacoes').single();
+    if(error){console.error(error);document.getElementById('supabaseRecomendacoesStatus').textContent='Recomendações online: erro ao salvar recomendação. Verifique RLS.';toast('Erro ao salvar recomendação');return}
+    const rows=items.map(i=>({
+      recomendacao_id:rec.id,produto_id:i.produtoId,dose:i.dose,unidade:i.unidade,observacoes:i.observacoes||''
+    }));
+    const {data:savedItems,error:itemError}=await supabaseClient.from('Recomendacao_Produtos').insert(rows)
+      .select('id,recomendacao_id,produto_id,dose,unidade,observacoes');
+    if(itemError){
+      console.error(itemError);
+      // Best effort rollback of the parent to avoid orphan recommendation.
+      await supabaseClient.from('Recomendacoes').delete().eq('id',rec.id);
+      toast('Erro ao salvar os produtos da recomendação');return;
+    }
+    db.recomendacoes.unshift({
+      id:rec.id,registroId:rec.registro_id,talhaoId:rec.talhao_id,data:rec.data_recomendacao,
+      motivo:rec.motivo||'',obs:rec.observacoes||'',status:rec.status,
+      items:(savedItems||[]).map(i=>({id:i.id,produtoId:i.produto_id,dose:Number(i.dose),unidade:i.unidade,observacoes:i.observacoes||''}))
+    });
+    save();hideForm('recForm');e.target.reset();render();toast('Recomendação salva no banco online');
+  }else{
+    db.recomendacoes.push({id:Date.now(),registroId:Number(reg.value),talhaoId:Number(tal.value),data:data.value,items,motivo:motivo.value,obs:obs.value,status:'PENDENTE'});
+    save();hideForm('recForm');e.target.reset();render();toast('Recomendação salva localmente');
+  }
+}
+
+
+async function testApplicationTables(){
+  initSupabase();
+  if(!supabaseClient){toast('Supabase não configurado');return}
+  const checks=[
+    ['Aplicacoes','select','id'],
+    ['Aplicacao_Produtos','select','id'],
+    ['Recomendacoes','select','id']
+  ];
+  const errors=[];
+  for(const [table,op,col] of checks){
+    const {error}=await supabaseClient.from(table).select(col).limit(1);
+    if(error) errors.push(`${table}: ${supabaseErrorText(error)}`);
+  }
+  if(errors.length){
+    const msg='Banco: há problemas de acesso:\\n\\n'+errors.join('\\n\\n');
+    const el=document.getElementById('supabaseAplicacoesStatus');
+    if(el)el.textContent=msg;
+    toast('Há um problema de permissão');
+  }else{
+    const el=document.getElementById('supabaseAplicacoesStatus');
+    if(el)el.textContent='Banco das aplicações: conectado ✓ · tabelas acessíveis';
+    toast('Tabelas de aplicação acessíveis');
+  }
+}
+
+async function loadAplicacoesFromSupabase(){
+  initSupabase();
+  const status=document.getElementById('supabaseAplicacoesStatus');
+  if(!supabaseClient){
+    if(status)status.textContent='Aplicações online: configuração do Supabase pendente.';
+    return;
+  }
+  const {data:apps,error:appError}=await supabaseClient.from('Aplicacoes')
+    .select('id,created_at,recomendacao_id,talhao_id,data,hora,operador,equipamento,temperatura,umidade,vento,resultado,indice_resultado,data_reavaliacao,resultado_obs,observacoes')
+    .order('id',{ascending:false});
+  if(appError){console.error(appError);if(status)status.textContent='Aplicações online: erro ao consultar Aplicacoes. Verifique RLS.';return}
+  const ids=(apps||[]).map(a=>a.id);
+  let items=[],photos=[];
+  if(ids.length){
+    const {data,error}=await supabaseClient.from('Aplicacao_Produtos')
+      .select('id,aplicacao_id,produto_id,dose_aplicada,unidade,observacoes')
+      .in('aplicacao_id',ids).order('id',{ascending:true});
+    if(error){console.error(error);if(status)status.textContent='Aplicações online: não foi possível carregar os produtos aplicados.';return}
+    items=data||[];
+
+    const photoQuery=await supabaseClient.from('Aplicacao_Fotos')
+      .select('id,aplicacao_id,nome_arquivo,caminho,tamanho_bytes')
+      .in('aplicacao_id',ids).order('id',{ascending:true});
+    if(photoQuery.error){
+      console.warn('Fotos ainda não configuradas:',photoQuery.error);
+    }else{
+      photos=photoQuery.data||[];
+    }
+  }
+  db.aplicacoes=(apps||[]).map(a=>({
+    id:a.id,recomendacaoId:a.recomendacao_id,talhaoId:a.talhao_id,data:a.data,hora:a.hora||'',
+    operador:a.operador||'',equipamento:a.equipamento||'',temp:a.temperatura??'',
+    umid:a.umidade??'',vento:a.vento??'',resultado:a.resultado||'EM_MONITORAMENTO',
+    indice:a.indice_resultado??'',reavaliacao:a.data_reavaliacao||'',
+    resultadoObs:a.resultado_obs||'',obs:a.observacoes||'',
+    registroId:(db.recomendacoes.find(r=>Number(r.id)===Number(a.recomendacao_id))||{}).registroId,
+    items:items.filter(i=>Number(i.aplicacao_id)===Number(a.id)).map(i=>({
+      id:i.id,produtoId:i.produto_id,qtd:Number(i.dose_aplicada||0),unidade:i.unidade||'',observacoes:i.observacoes||''
+    })),
+    fotos:photos.filter(f=>Number(f.aplicacao_id)===Number(a.id)).map(f=>({
+      id:f.id,name:f.nome_arquivo,url:supabaseClient.storage.from('roseiral-fotos').getPublicUrl(f.caminho).data.publicUrl,size:f.tamanho_bytes
+    }))
+  }));
+  save();
+  if(status)status.textContent=`Aplicações online: conectado ✓ · ${db.aplicacoes.length} aplicação(ões)`;
+  render();
+}
+async function openApplication(recId){
+  await Promise.all([loadTalhoesFromSupabase(),loadProdutosFromSupabase(),loadRegistrosFromSupabase(),loadRecomendacoesFromSupabase(),loadAplicacoesFromSupabase()]);
+  const recs=db.recomendacoes.filter(r=>(r.status==='PENDENTE'||r.status==='RECOMENDADA') && (r.items||[]).length);
+  if(recId){
+    const rec=db.recomendacoes.find(r=>Number(r.id)===Number(recId));
+    if(!rec||!['PENDENTE','RECOMENDADA'].includes(rec.status)){toast('Somente recomendações pendentes podem gerar aplicação');return}
+    if(db.aplicacoes.some(a=>Number(a.recomendacaoId)===Number(rec.id))){toast('Esta recomendação já possui uma aplicação');return}
+  }else if(!recs.length){toast('Não existem recomendações disponíveis para aplicação');return}
+  populateSelect('aRecomendacao',recs,'id');
+  document.getElementById('aRecomendacao').innerHTML=recs.length?recs.map(r=>`<option value="${r.id}">${fmt(r.data)} — ${esc(tname(r.talhaoId))} — ${esc(rname(r.registroId))}</option>`).join(''):'<option value="">Nenhuma recomendação disponível</option>';
+  if(recId)document.getElementById('aRecomendacao').value=String(recId);
+  document.getElementById('aData').value=today;
+  document.getElementById('aHora').value=new Date().toTimeString().slice(0,5);
+  document.getElementById('aResultado').value='EM_MONITORAMENTO';
+  document.getElementById('aReavaliacao').value=new Date(Date.now()+3*86400000).toISOString().slice(0,10);
+  document.getElementById('aIndice').value='';document.getElementById('aResultadoObs').value='';
+  document.getElementById('aObs').value='';document.getElementById('aOperador').value='';document.getElementById('aEquipamento').value='';
+  document.getElementById('aTemp').value='';document.getElementById('aUmid').value='';document.getElementById('aVento').value='';
+  pendingPhotos=[];document.getElementById('photoPreview').innerHTML='';
+  syncApplicationFromRecommendation();showApplicationSaveStatus('info','Pronto para registrar a aplicação.');document.getElementById('appModal').style.display='block';
+}
+function syncApplicationFromRecommendation(){const rec=db.recomendacoes.find(r=>r.id===Number(aRecomendacao.value));if(!rec)return;const g=db.registros.find(x=>x.id===rec.registroId);aIdentificacao.value=g?`${g.nome} — ${g.tipo==='ADUBACAO'?'Adubação':'Praga'}`:'-';aTalhaoNome.value=tname(rec.talhaoId);document.getElementById('applicationItems').innerHTML=(rec.items||[]).map((i,idx)=>`<div class="card" style="margin-bottom:10px"><div class="formgrid"><div class="field"><label>Produto</label><input value="${esc(pname(i.produtoId))}" readonly></div><div class="field"><label>Dose recomendada</label><input value="${esc(i.dose+' '+i.unidade)}" readonly></div><div class="field"><label>Quantidade aplicada</label><input class="app-qtd" data-idx="${idx}" type="number" step="0.001" required></div><div class="field"><label>Unidade</label><input class="app-unidade" data-idx="${idx}" value="${esc(i.unidade.split('/')[0])}" required></div></div></div>`).join('')}
+function closeApplication(){document.getElementById('appModal').style.display='none'}
+
+async function compressImage(file){
+  // Compacta fotos no navegador antes do envio:
+  // lado máximo 1600px, JPEG qualidade 0.72.
+  // O arquivo final normalmente fica muito menor que o original.
+  const blob=await new Promise((resolve,reject)=>{
+    const img=new Image();
+    const url=URL.createObjectURL(file);
+    img.onload=()=>{
+      URL.revokeObjectURL(url);
+      const maxSide=1600;
+      const scale=Math.min(1,maxSide/Math.max(img.naturalWidth,img.naturalHeight));
+      const w=Math.max(1,Math.round(img.naturalWidth*scale));
+      const h=Math.max(1,Math.round(img.naturalHeight*scale));
+      const canvas=document.createElement('canvas');
+      canvas.width=w;canvas.height=h;
+      const ctx=canvas.getContext('2d',{alpha:false});
+      ctx.drawImage(img,0,0,w,h);
+      canvas.toBlob(b=>b?resolve(b):reject(new Error('Não foi possível comprimir a imagem')),'image/jpeg',0.72);
+    };
+    img.onerror=()=>{URL.revokeObjectURL(url);reject(new Error('Não foi possível abrir a imagem'))};
+    img.src=url;
+  });
+  const base=(file.name||'foto').replace(/\.[^.]+$/,'').replace(/[^\w.-]+/g,'_');
+  return {name:base+'.jpg',blob,data:URL.createObjectURL(blob),size:blob.size,type:'image/jpeg'};
+}
+function renderPendingPhotos(){
+  const el=document.getElementById('photoPreview');
+  if(!el)return;
+  el.innerHTML=pendingPhotos.map((f,i)=>`<div class="photo"><img src="${f.data}" alt="${esc(f.name)}"><small>${esc(f.name)} · ${(f.size/1024).toFixed(0)} KB</small><button type="button" class="btn" style="margin-top:4px" onclick="removePendingPhoto(${i})">Remover</button></div>`).join('');
+}
+function removePendingPhoto(i){
+  const f=pendingPhotos[i];
+  if(f?.data)URL.revokeObjectURL(f.data);
+  pendingPhotos.splice(i,1);
+  renderPendingPhotos();
+}
+async function preparePhotos(files){
+  const list=[...files];
+  if(!list.length)return;
+  showApplicationSaveStatus('info',`Compactando ${list.length} foto(s) no celular/computador...`);
+  for(const file of list){
+    if(!file.type.startsWith('image/'))continue;
+    try{
+      const photo=await compressImage(file);
+      pendingPhotos.push(photo);
+    }catch(err){console.error(err);toast(`Não foi possível preparar ${file.name}`);}
+  }
+  renderPendingPhotos();
+  const total=pendingPhotos.reduce((s,f)=>s+f.size,0);
+  showApplicationSaveStatus('info',`Fotos preparadas: ${pendingPhotos.length} · ${(total/1024/1024).toFixed(2)} MB`);
+}
+
+function previewPhotos(e){preparePhotos(e.target.files);e.target.value=''}
+
+function showApplicationSaveStatus(kind,msg){
+  const el=document.getElementById('applicationSaveStatus');
+  if(!el)return;
+  el.style.display='block';
+  el.textContent=msg;
+  el.style.color=kind==='ok'?'var(--ok)':kind==='err'?'var(--danger)':'var(--muted)';
+  el.style.background=kind==='ok'?'#eef8f0':kind==='err'?'#fff0f0':'#fafafa';
+}
+function supabaseErrorText(error){
+  if(!error)return 'Erro desconhecido.';
+  return [
+    error.message ? `Mensagem: ${error.message}` : '',
+    error.code ? `Código: ${error.code}` : '',
+    error.details ? `Detalhes: ${error.details}` : '',
+    error.hint ? `Dica: ${error.hint}` : ''
+  ].filter(Boolean).join('\n');
+}
+
+async function saveApplication(e){
+  e.preventDefault();
+  showApplicationSaveStatus('info','Verificando a recomendação e preparando o salvamento...');
+
+  const recId=Number(document.getElementById('aRecomendacao').value);
+  const rec=db.recomendacoes.find(r=>Number(r.id)===recId);
+  if(!rec||!['PENDENTE','RECOMENDADA'].includes(rec.status)){
+    showApplicationSaveStatus('err','Selecione uma recomendação válida e pendente.');
+    toast('Recomendação inválida'); return;
+  }
+  if(db.aplicacoes.some(a=>Number(a.recomendacaoId)===recId)){
+    showApplicationSaveStatus('err','Esta recomendação já possui uma aplicação registrada.');
+    toast('Recomendação já aplicada'); return;
+  }
+
+  const rows=[...document.querySelectorAll('#applicationItems .card')];
+  const items=(rec.items||[]).map((r,i)=>({
+    produtoId:r.produtoId,
+    qtd:Number(rows[i]?.querySelector('.app-qtd')?.value||0),
+    unidade:rows[i]?.querySelector('.app-unidade')?.value||r.unidade
+  }));
+  if(!items.length){
+    showApplicationSaveStatus('err','A recomendação não possui produtos.');
+    toast('Nenhum produto na recomendação'); return;
+  }
+  if(items.some(i=>!i.qtd||i.qtd<=0)){
+    showApplicationSaveStatus('err','Informe a quantidade aplicada para todos os produtos.');
+    toast('Informe todas as quantidades'); return;
+  }
+
+  initSupabase();
+  if(!supabaseClient){
+    showApplicationSaveStatus('err','O banco online não está conectado.\nVerifique o arquivo supabase-config.js.');
+    toast('Supabase não conectado'); return;
+  }
+
+  const appPayload={
+    recomendacao_id:rec.id,
+    talhao_id:rec.talhaoId,
+    data:document.getElementById('aData').value,
+    hora:document.getElementById('aHora').value||null,
+    operador:document.getElementById('aOperador').value.trim(),
+    equipamento:document.getElementById('aEquipamento').value.trim(),
+    temperatura:document.getElementById('aTemp').value?Number(document.getElementById('aTemp').value):null,
+    umidade:document.getElementById('aUmid').value?Number(document.getElementById('aUmid').value):null,
+    vento:document.getElementById('aVento').value?String(document.getElementById('aVento').value):null,
+    resultado:document.getElementById('aResultado').value,
+    indice_resultado:document.getElementById('aIndice').value?Number(document.getElementById('aIndice').value):null,
+    data_reavaliacao:document.getElementById('aReavaliacao').value||null,
+    resultado_obs:document.getElementById('aResultadoObs').value.trim(),
+    observacoes:document.getElementById('aObs').value.trim()
+  };
+
+  showApplicationSaveStatus('info','1/3 — Salvando a aplicação...');
+  const {data:app,error}=await supabaseClient.from('Aplicacoes').insert(appPayload)
+    .select('id,created_at,recomendacao_id,talhao_id,data,hora,operador,equipamento,temperatura,umidade,vento,resultado,indice_resultado,data_reavaliacao,resultado_obs,observacoes')
+    .single();
+
+  if(error){
+    const msg=supabaseErrorText(error);
+    console.error('Erro Aplicacoes:',error);
+    showApplicationSaveStatus('err','Não foi possível salvar a aplicação no Supabase.\n\n'+msg);
+    toast('Erro ao salvar aplicação');
+    return;
+  }
+
+  showApplicationSaveStatus('info','2/3 — Salvando os produtos realmente aplicados...');
+  const productRows=items.map(i=>({
+    aplicacao_id:app.id,
+    produto_id:i.produtoId,
+    dose_aplicada:i.qtd,
+    unidade:i.unidade,
+    observacoes:''
+  }));
+
+  const {data:saved,error:itemError}=await supabaseClient.from('Aplicacao_Produtos').insert(productRows)
+    .select('id,aplicacao_id,produto_id,dose_aplicada,unidade,observacoes');
+
+  if(itemError){
+    const msg=supabaseErrorText(itemError);
+    console.error('Erro Aplicacao_Produtos:',itemError);
+    // Tenta apagar a aplicação incompleta; se a política não permitir, o erro será informado.
+    const rollback=await supabaseClient.from('Aplicacoes').delete().eq('id',app.id);
+    let rollbackMsg='';
+    if(rollback.error) rollbackMsg=`\n\nAtenção: o salvamento dos produtos falhou e a tentativa de desfazer a aplicação também falhou:\n${supabaseErrorText(rollback.error)}`;
+    showApplicationSaveStatus('err','A aplicação foi criada, mas os produtos aplicados não puderam ser gravados.\n\n'+msg+rollbackMsg);
+    toast('Erro ao salvar produtos aplicados');
+    return;
+  }
+
+  showApplicationSaveStatus('info','3/3 — Atualizando a recomendação...');
+  const {error:updateRecError}=await supabaseClient.from('Recomendacoes')
+    .update({status:'APLICADA'}).eq('id',rec.id);
+
+  if(updateRecError){
+    const msg=supabaseErrorText(updateRecError);
+    console.error('Erro ao atualizar Recomendacoes:',updateRecError);
+    // Não desfazemos a aplicação: ela já foi salva. Apenas informamos.
+    rec.status='APLICADA';
+    showApplicationSaveStatus('err','A aplicação e os produtos foram salvos, mas a recomendação não pôde ser marcada como APLICADA.\n\n'+msg);
+    toast('Aplicação salva; recomendação pendente');
+  } else {
+    rec.status='APLICADA';
+    showApplicationSaveStatus('ok','Aplicação e produtos salvos com sucesso no Supabase ✓');
+  }
+
+  const g=db.registros.find(x=>Number(x.id)===Number(rec.registroId));
+  if(g&&app.resultado==='RESOLVIDO'){
+    g.status='RESOLVIDO';
+    const {error:regUpdateError}=await supabaseClient.from('Pragas_Adubacao')
+      .update({status:'RESOLVIDO'}).eq('id',g.id);
+    if(regUpdateError) console.error('Erro ao atualizar identificação:',regUpdateError);
+  }
+
+  let storedPhotos=[];
+  if(pendingPhotos.length){
+    showApplicationSaveStatus('info',`4/4 — Enviando ${pendingPhotos.length} foto(s) compactada(s)...`);
+    for(let i=0;i<pendingPhotos.length;i++){
+      const photo=pendingPhotos[i];
+      const safeName=`${Date.now()}_${i}_${photo.name}`;
+      const path=`aplicacoes/${app.id}/${safeName}`;
+      const {error:uploadError}=await supabaseClient.storage.from('roseiral-fotos')
+        .upload(path,photo.blob,{contentType:'image/jpeg',cacheControl:'31536000',upsert:false});
+      if(uploadError){
+        console.error('Erro upload foto:',uploadError);
+        showApplicationSaveStatus('err',`A aplicação foi salva, mas a foto ${photo.name} não pôde ser enviada.\n\n${supabaseErrorText(uploadError)}\n\nCrie o bucket "roseiral-fotos" e as políticas de Storage.`);
+        continue;
+      }
+      const {data:photoRow,error:photoError}=await supabaseClient.from('Aplicacao_Fotos').insert({
+        aplicacao_id:app.id,
+        nome_arquivo:photo.name,
+        caminho:path,
+        tamanho_bytes:photo.size
+      }).select('id,aplicacao_id,nome_arquivo,caminho,tamanho_bytes').single();
+      if(photoError){
+        console.error('Erro metadados foto:',photoError);
+        showApplicationSaveStatus('err',`A foto ${photo.name} foi enviada, mas não foi possível registrar seu vínculo no banco.\n\n${supabaseErrorText(photoError)}`);
+        continue;
+      }
+      storedPhotos.push({
+        id:photoRow.id,
+        name:photoRow.nome_arquivo,
+        url:supabaseClient.storage.from('roseiral-fotos').getPublicUrl(photoRow.caminho).data.publicUrl,
+        size:photoRow.tamanho_bytes
+      });
+    }
+  }
+
+  const localApp={
+    id:app.id,recomendacaoId:app.recomendacao_id,registroId:rec.registroId,talhaoId:app.talhao_id,
+    data:app.data,hora:app.hora||'',operador:app.operador||'',equipamento:app.equipamento||'',
+    temp:app.temperatura??'',umid:app.umidade??'',vento:app.vento??'',resultado:app.resultado,
+    reavaliacao:app.data_reavaliacao||'',indice:app.indice_resultado??'',resultadoObs:app.resultado_obs||'',
+    obs:app.observacoes||'',items:(saved||[]).map(i=>({id:i.id,produtoId:i.produto_id,qtd:Number(i.dose_aplicada),unidade:i.unidade,observacoes:i.observacoes||''})),
+    fotos:storedPhotos
+  };
+  db.aplicacoes.unshift(localApp);save();
+  pendingPhotos.forEach(p=>p.data&&URL.revokeObjectURL(p.data));
+  pendingPhotos=[];
+  closeApplication();render();
+  toast('Aplicação registrada no banco online');
+}
+function monitorApplication(id){const a=db.aplicacoes.find(x=>x.id===id);if(!a)return;toast('Monitoramento será atualizado na próxima etapa')}
+
+async function bootstrapOnlineData(){
+  try{
+    initSupabase();
+    if(!supabaseClient){ render(); return; }
+
+    // Do not wipe local data before the remote reads succeed.
+    await loadTalhoesFromSupabase();
+    await loadProdutosFromSupabase();
+    await loadRegistrosFromSupabase();
+    await loadRecomendacoesFromSupabase();
+    await loadAplicacoesFromSupabase();
+    render();
+  }catch(err){
+    console.error('Falha no carregamento online:',err);
+    const recStatus=document.getElementById('supabaseRecomendacoesStatus');
+    if(recStatus)recStatus.textContent='Recomendações online: erro no carregamento — '+(err?.message||String(err));
+    render();
+  }
+}
+
+bootstrapOnlineData();
+</script>
+</body>
+</html>
