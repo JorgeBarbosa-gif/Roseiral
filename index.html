@@ -786,15 +786,14 @@ function renderHistory(){
     const fotos=(a.fotos||[]).map(f=>{
       const src=publicStorageUrl(f.caminho)||f.url||f.data||'';
       if(!src)return '';
-      return `<div class="photo" style="overflow:hidden">
-        <a href="${esc(src)}" target="_blank" rel="noopener noreferrer" title="Abrir foto em nova aba">
-          <img src="${esc(src)}" alt="${esc(f.name||'Foto da aplicação')}"
-            style="display:block;width:100%;height:auto;max-height:360px;object-fit:contain;background:#f4f4f4"
-            loading="eager">
-        </a>
-        <div style="padding:8px 2px 2px;display:flex;justify-content:space-between;gap:8px;align-items:center">
-          <small style="overflow-wrap:anywhere">${esc(f.name||'Foto')} · ${((f.size||0)/1024).toFixed(0)} KB</small>
-          <a href="${esc(src)}" target="_blank" rel="noopener noreferrer" style="white-space:nowrap;color:var(--accent);font-weight:700">Abrir foto</a>
+      return `<div class="card" style="padding:14px;background:#fafafa;border:1px solid var(--line)">
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+          <div style="width:72px;height:72px;border-radius:10px;background:#f0f0f0;display:flex;align-items:center;justify-content:center;font-size:30px">📷</div>
+          <div style="flex:1;min-width:220px">
+            <b style="display:block;overflow-wrap:anywhere">${esc(f.name||'Foto da aplicação')}</b>
+            <div class="sub">${((f.size||0)/1024).toFixed(0)} KB</div>
+          </div>
+          <a class="btn primary" href="${esc(src)}" target="_blank" rel="noopener noreferrer">Ver foto</a>
         </div>
       </div>`;
     }).join('');
@@ -819,7 +818,7 @@ function renderHistory(){
       </div>
       ${a.obs?`<p><b>Observações:</b> ${esc(a.obs)}</p>`:''}
       ${a.resultadoObs?`<p><b>Resultado:</b> ${esc(a.resultadoObs)}</p>`:''}
-      <div class="photo-grid">${fotos||'<div class="empty">Sem fotos nesta aplicação.</div>'}</div>
+      ${fotos?`<div style="margin-top:12px"><b>Fotos da aplicação</b><div style="margin-top:8px;display:grid;gap:10px">${fotos}</div></div>`:''}
     </div>`;
   }).join('');
 }
