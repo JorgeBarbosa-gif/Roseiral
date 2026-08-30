@@ -766,6 +766,7 @@ function renderMonitoring(){const total=db.aplicacoes.length,res=db.aplicacoes.f
 function renderHistory(){
   const el=document.getElementById('history');
   if(!el)return;
+
   const rows=(db.aplicacoes||[]).slice().sort((a,b)=>String(b.data).localeCompare(String(a.data))||Number(b.id)-Number(a.id));
   if(!rows.length){
     el.innerHTML='<div class="empty">O histórico aparecerá após a primeira aplicação.</div>';
@@ -774,14 +775,22 @@ function renderHistory(){
 
   el.innerHTML=rows.map(a=>{
     const produtos=(a.items||[]).map(i=>`${esc(pname(i.produtoId))}: ${i.qtd} ${esc(i.unidade)}`).join(' · ');
+
     const fotos=(a.fotos||[]).map(f=>{
       const src=f.url||f.data||'';
-      return src
-        ? `<button type="button" class="photo" style="border:0;background:transparent;padding:0;text-align:left;cursor:pointer" onclick="openHistoryPhoto('${esc(src)}','${esc(f.name)}')">
-             <img src="${esc(src)}" alt="${esc(f.name)}">
-             <small>${esc(f.name)} · ${((f.size||0)/1024).toFixed(0)} KB</small>
-           </button>`
-        : '';
+      if(!src)return '';
+
+      return `<div class="photo" style="position:relative">
+        <img src="${esc(src)}" alt="${esc(f.name||'Foto da aplicação')}"
+          style="display:block;width:100%;height:auto;min-height:180px;object-fit:cover;background:#f4f4f4"
+          loading="lazy"
+          onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+        <a href="${esc(src)}" target="_blank" rel="noopener"
+          style="display:none;min-height:180px;align-items:center;justify-content:center;text-align:center;padding:16px;color:var(--accent);background:#fafafa;border:1px dashed var(--line);border-radius:8px;text-decoration:none">
+          Abrir foto em nova aba
+        </a>
+        <small>${esc(f.name||'Foto')} · ${((f.size||0)/1024).toFixed(0)} KB</small>
+      </div>`;
     }).join('');
 
     const status=statusBadge(a.resultado);
@@ -1201,7 +1210,11 @@ async function loadAplicacoesFromSupabase(){
       id:i.id,produtoId:i.produto_id,qtd:Number(i.dose_aplicada||0),unidade:i.unidade||'',observacoes:i.observacoes||''
     })),
     fotos:photos.filter(f=>Number(f.aplicacao_id)===Number(a.id)).map(f=>({
-      id:f.id,name:f.nome_arquivo,url:supabaseClient.storage.from('roseiral-fotos').getPublicUrl(f.caminho).data.publicUrl,size:f.tamanho_bytes
+      id:f.id,
+      name:f.nome_arquivo,
+      caminho:f.caminho,
+      url:supabaseClient.storage.from('roseiral-fotos').getPublicUrl(f.caminho).data.publicUrl,
+      size:f.tamanho_bytes
     }))
   }));
   save();
