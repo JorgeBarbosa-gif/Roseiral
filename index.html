@@ -446,7 +446,13 @@ button,input,select,textarea{font:inherit} button{cursor:pointer}
 </section>
 
 <section id="historico" class="page">
-  <div class="top"><div><h1>Histórico</h1><div class="sub">Rastreabilidade da identificação até o resultado monitorado.</div></div></div>
+  <div class="top">
+    <div><h1>Histórico</h1><div class="sub">Rastreabilidade da identificação até o resultado monitorado.</div></div>
+    <button class="btn" type="button" onclick="loadAplicacoesFromSupabase()">↻ Atualizar</button>
+  </div>
+  <div id="supabaseHistoricoStatus" style="margin:-10px 0 16px 0;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:#fafafa;font-size:13px;color:var(--muted)">
+    Histórico online: verificando...
+  </div>
   <div class="card"><div id="history"></div></div>
 </section>
 </main>
@@ -534,6 +540,7 @@ function showPage(id){
   render();
   if(id==='recomendacoes') loadRecomendacoesFromSupabase();
   if(id==='aplicacoes') loadAplicacoesFromSupabase();
+  if(id==='historico') loadAplicacoesFromSupabase();
   if(id==='evolucao') loadEvolucoesFromSupabase();
 }
 document.querySelectorAll('.nav button').forEach(b=>b.onclick=()=>showPage(b.dataset.page));
@@ -756,8 +763,59 @@ function render(){
 }
 function renderPendingChart(){const vals=db.talhoes.map(t=>({nome:t.nome,count:db.recomendacoes.filter(r=>r.talhaoId===t.id&&r.status!=='APLICADA').length}));const max=Math.max(1,...vals.map(x=>x.count));document.getElementById('pendingChart').innerHTML=vals.map(x=>`<div style="display:grid;grid-template-columns:52px 1fr 34px;gap:8px;align-items:center;margin:10px 0"><b>${esc(x.nome)}</b><div style="height:18px;background:#f0ecee;border-radius:99px;overflow:hidden"><div style="width:${x.count/max*100}%;height:100%;background:var(--accent);border-radius:99px"></div></div><b style="text-align:right">${x.count}</b></div>`).join('')}
 function renderMonitoring(){const total=db.aplicacoes.length,res=db.aplicacoes.filter(a=>a.resultado==='RESOLVIDO').length,parc=db.aplicacoes.filter(a=>a.resultado==='PARCIAL').length,mon=db.aplicacoes.filter(a=>a.resultado==='EM_MONITORAMENTO').length,nr=db.aplicacoes.filter(a=>a.resultado==='NAO_RESOLVIDO').length;document.getElementById('monitoringPulse').innerHTML=`<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px"><div style="text-align:center"><div style="font-size:25px;font-weight:800">${res}</div><small>Resolvidos</small></div><div style="text-align:center"><div style="font-size:25px;font-weight:800">${parc}</div><small>Parciais</small></div><div style="text-align:center"><div style="font-size:25px;font-weight:800">${mon}</div><small>Monitorando</small></div><div style="text-align:center"><div style="font-size:25px;font-weight:800">${nr}</div><small>Não resolvidos</small></div></div><div style="height:12px;background:#eee;border-radius:99px;overflow:hidden;display:flex"><div style="width:${total?res/total*100:0}%;background:var(--ok)"></div><div style="width:${total?parc/total*100:0}%;background:#c9942d"></div><div style="width:${total?mon/total*100:0}%;background:#b08d45"></div><div style="width:${total?nr/total*100:0}%;background:var(--danger)"></div></div><div class="sub" style="margin-top:10px">${total?`Taxa de resolução atual: <b>${Math.round(res/total*100)}%</b>`:'Registre aplicações para ativar o monitoramento.'}</div>`;const list=db.aplicacoes.filter(a=>a.resultado!=='RESOLVIDO').slice().reverse().slice(0,6);document.getElementById('monitoringList').innerHTML=list.length?list.map(a=>`<div style="padding:10px 0;border-bottom:1px solid var(--line)"><b>${tname(a.talhaoId)}</b> — ${esc(rname(a.registroId))}<div class="sub">${resultLabel(a.resultado)} · ${a.reavaliacao?`reavaliar ${fmt(a.reavaliacao)}`:'sem data de reavaliação'}</div></div>`).join(''):'<div class="empty">Nenhum caso aguardando monitoramento.</div>'}
-function renderHistory(){document.getElementById('history').innerHTML=db.aplicacoes.slice().reverse().map(a=>`<div class="card" style="margin-bottom:12px"><div class="section-title"><h2>${esc(rname(a.registroId))} — ${tname(a.talhaoId)}</h2>${statusBadge(a.resultado)}</div><div class="sub">${fmt(a.data)} ${a.hora||''} · ${(a.items||[]).map(i=>`${esc(pname(i.produtoId))}: ${i.qtd} ${esc(i.unidade)}`).join(' · ')}</div><p>${esc(a.resultadoObs||a.obs||'')}</p>${a.indice?`<div class="sub">Índice observado: <b>${a.indice}%</b></div>`:''}<div class="photo-grid">${(a.fotos||[]).map(f=>`<div class="photo"><img src="${f.data}" alt="${esc(f.name)}"><small>${esc(f.name)}</small></div>`).join('')}</div></div>`).join('')||'<div class="empty">O histórico aparecerá após a primeira aplicação.</div>'}
+function renderHistory(){
+  const el=document.getElementById('history');
+  if(!el)return;
+  const rows=(db.aplicacoes||[]).slice().sort((a,b)=>String(b.data).localeCompare(String(a.data))||Number(b.id)-Number(a.id));
+  if(!rows.length){
+    el.innerHTML='<div class="empty">O histórico aparecerá após a primeira aplicação.</div>';
+    return;
+  }
 
+  el.innerHTML=rows.map(a=>{
+    const produtos=(a.items||[]).map(i=>`${esc(pname(i.produtoId))}: ${i.qtd} ${esc(i.unidade)}`).join(' · ');
+    const fotos=(a.fotos||[]).map(f=>{
+      const src=f.url||f.data||'';
+      return src
+        ? `<button type="button" class="photo" style="border:0;background:transparent;padding:0;text-align:left;cursor:pointer" onclick="openHistoryPhoto('${esc(src)}','${esc(f.name)}')">
+             <img src="${esc(src)}" alt="${esc(f.name)}">
+             <small>${esc(f.name)} · ${((f.size||0)/1024).toFixed(0)} KB</small>
+           </button>`
+        : '';
+    }).join('');
+
+    const status=statusBadge(a.resultado);
+    const ident=rname(a.registroId)||'Identificação não encontrada';
+
+    return `<div class="card" style="margin-bottom:14px">
+      <div class="section-title">
+        <h2>${esc(ident)} — ${esc(tname(a.talhaoId))}</h2>
+        ${status}
+      </div>
+      <div class="sub">${fmt(a.data)}${a.hora?` · ${esc(a.hora)}`:''}${a.operador?` · Operador: ${esc(a.operador)}`:''}</div>
+      ${produtos?`<p><b>Produtos aplicados:</b> ${produtos}</p>`:''}
+      <div class="formgrid" style="margin-top:8px">
+        ${a.equipamento?`<div><b>Equipamento</b><div class="sub">${esc(a.equipamento)}</div></div>`:''}
+        ${a.temp!==''?`<div><b>Temperatura</b><div class="sub">${esc(a.temp)} °C</div></div>`:''}
+        ${a.umid!==''?`<div><b>Umidade</b><div class="sub">${esc(a.umid)}%</div></div>`:''}
+        ${a.vento!==''?`<div><b>Vento</b><div class="sub">${esc(a.vento)} km/h</div></div>`:''}
+        ${a.reavaliacao?`<div><b>Próxima avaliação</b><div class="sub">${fmt(a.reavaliacao)}</div></div>`:''}
+        ${a.indice!==''?`<div><b>Índice observado</b><div class="sub">${esc(a.indice)}%</div></div>`:''}
+      </div>
+      ${a.obs?`<p><b>Observações:</b> ${esc(a.obs)}</p>`:''}
+      ${a.resultadoObs?`<p><b>Resultado:</b> ${esc(a.resultadoObs)}</p>`:''}
+      <div class="photo-grid">${fotos||'<div class="empty">Sem fotos nesta aplicação.</div>'}</div>
+    </div>`;
+  }).join('');
+}
+
+function openHistoryPhoto(url,name){
+  if(!url)return;
+  const win=window.open('', '_blank');
+  if(!win)return;
+  win.document.write(`<title>${esc(name)}</title><body style="margin:0;background:#111;display:flex;align-items:center;justify-content:center;min-height:100vh"><img src="${url}" alt="${esc(name)}" style="max-width:98vw;max-height:98vh;object-fit:contain"></body>`);
+  win.document.close();
+}
 
 let supabaseClient = null;
 function initSupabase(){
@@ -1104,14 +1162,16 @@ async function testApplicationTables(){
 async function loadAplicacoesFromSupabase(){
   initSupabase();
   const status=document.getElementById('supabaseAplicacoesStatus');
+  const histStatus=document.getElementById('supabaseHistoricoStatus');
   if(!supabaseClient){
     if(status)status.textContent='Aplicações online: configuração do Supabase pendente.';
+    if(histStatus)histStatus.textContent='Histórico online: configuração do Supabase pendente.';
     return;
   }
   const {data:apps,error:appError}=await supabaseClient.from('Aplicacoes')
     .select('id,created_at,recomendacao_id,talhao_id,data,hora,operador,equipamento,temperatura,umidade,vento,resultado,indice_resultado,data_reavaliacao,resultado_obs,observacoes')
     .order('id',{ascending:false});
-  if(appError){console.error(appError);if(status)status.textContent='Aplicações online: erro ao consultar Aplicacoes. Verifique RLS.';return}
+  if(appError){console.error(appError);if(status)status.textContent='Aplicações online: erro ao consultar Aplicacoes. Verifique RLS.';if(histStatus)histStatus.textContent='Histórico online: erro ao consultar Aplicacoes.';return}
   const ids=(apps||[]).map(a=>a.id);
   let items=[],photos=[];
   if(ids.length){
@@ -1146,6 +1206,7 @@ async function loadAplicacoesFromSupabase(){
   }));
   save();
   if(status)status.textContent=`Aplicações online: conectado ✓ · ${db.aplicacoes.length} aplicação(ões)`;
+  if(histStatus)histStatus.textContent=`Histórico online: conectado ✓ · ${db.aplicacoes.length} aplicação(ões)`;
   render();
 }
 let applicationEditId=null;
