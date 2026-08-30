@@ -5,57 +5,49 @@ function json(data, init={}) {
   });
 }
 
-function getOutputText(data) {
-  if (typeof data?.output_text === "string") return data.output_text;
+function getOutputText(data){
+  if(typeof data?.output_text==="string") return data.output_text;
   const chunks=[];
-  for (const item of (data?.output||[])) {
-    for (const c of (item?.content||[])) {
-      if (typeof c?.text === "string") chunks.push(c.text);
+  for(const item of (data?.output||[])){
+    for(const c of (item?.content||[])){
+      if(typeof c?.text==="string") chunks.push(c.text);
     }
   }
   return chunks.join("\n").trim();
 }
 
-export async function onRequestPost({request, env}) {
-  if (!env.OPENAI_API_KEY) {
-    return json({error:"OPENAI_API_KEY não está configurada no Cloudflare."},{status:503});
-  }
+export async function onRequest({request,env}){
+  if(request.method!=="POST") return json({error:"Método não permitido.",method:request.method},{status:405,headers:{Allow:"POST"}});
+
+  if(!env.OPENAI_API_KEY) return json({error:"OPENAI_API_KEY não está disponível para esta Function.",code:"missing_openai_key"},{status:503});
 
   let body;
-  try { body=await request.json(); }
-  catch { return json({error:"JSON inválido."},{status:400}); }
+  try{body=await request.json()}catch{return json({error:"JSON inválido."},{status:400})}
 
   const imageUrls=Array.isArray(body.imageUrls)
-    ? body.imageUrls.filter(u=>typeof u==="string" && u.startsWith("http")).slice(0,3)
-    : [];
+    ? body.imageUrls.filter(u=>typeof u==="string"&&u.startsWith("http")).slice(0,3):[];
   const contexto=body.contexto||{};
-
   if(!imageUrls.length) return json({error:"Nenhuma foto foi enviada para análise."},{status:400});
 
   const prompt=`Você é um assistente de apoio ao manejo de um roseiral.
-Analise visualmente a foto principal da lavoura.
-NÃO forneça diagnóstico definitivo de praga, doença ou deficiência.
-Descreva somente sinais visuais, hipóteses e pontos que merecem inspeção em campo.
-
-Contexto:
+Analise visualmente a foto principal. Não dê diagnóstico definitivo de praga, doença ou deficiência.
+Aponte apenas sinais visuais, hipóteses e pontos para inspeção de campo.
 Talhão: ${contexto.talhao||"-"}
 Data: ${contexto.data||"-"}
-Estágio informado: ${contexto.estagio||"-"}
-Observações do produtor: ${contexto.observacoes||"-"}
-Hastes estimadas pelo produtor: ${contexto.hastes_estimadas??"-"}
+Estágio: ${contexto.estagio||"-"}
+Observações: ${contexto.observacoes||"-"}
+Hastes informadas: ${contexto.hastes_estimadas??"-"}
 
-Regras:
-- Seja conservador e honesto quando a imagem não permitir concluir algo.
-- "pragas_possiveis" deve usar termos como "sinais compatíveis com..." ou "não foi possível observar sinais claros de...".
-- "nivel_atencao" deve ser BAIXO, MEDIO ou ALTO.
-- "confianca_visual" deve ser BAIXA, MEDIA ou ALTA.
-- Só estime hastes se houver base visual/contextual razoável; senão null.
-- Só informe previsão de colheita em YYYY-MM-DD se houver base suficiente; senão null.
-- relatorio_ia deve ser curto e deixar claro que é análise visual orientativa.`;
+Retorne apenas JSON válido com:
+condicao_visual, desenvolvimento, hastes_estimadas, previsao_colheita,
+pragas_possiveis, nivel_atencao, confianca_visual, relatorio_ia.
+Use null quando não houver base suficiente.
+nivel_atencao: BAIXO, MEDIO ou ALTO.
+confianca_visual: BAIXA, MEDIA ou ALTA.
+relatorio_ia deve dizer que é análise visual orientativa.`;
 
   const schema={
-    type:"object",
-    additionalProperties:false,
+    type:"object",additionalProperties:false,
     properties:{
       condicao_visual:{type:["string","null"]},
       desenvolvimento:{type:["string","null"]},
@@ -66,25 +58,15 @@ Regras:
       confianca_visual:{type:["string","null"]},
       relatorio_ia:{type:["string","null"]}
     },
-    required:[
-      "condicao_visual","desenvolvimento","hastes_estimadas",
-      "previsao_colheita","pragas_possiveis","nivel_atencao",
-      "confianca_visual","relatorio_ia"
-    ]
+    required:["condicao_visual","desenvolvimento","hastes_estimadas","previsao_colheita","pragas_possiveis","nivel_atencao","confianca_visual","relatorio_ia"]
   };
 
-  const inputContent=[
-    {type:"input_text", text:prompt},
-    {type:"input_image", image_url:imageUrls[0], detail:"auto"}
-  ];
+  const content=[{type:"input_text",text:prompt},{type:"input_image",image_url:imageUrls[0],detail:"auto"}];
+  for(const u of imageUrls.slice(1)) content.push({type:"input_image",image_url:u,detail:"low"});
 
-  // Optional additional photos can be included, while the first remains the principal.
-  for(const u of imageUrls.slice(1)){
-    inputContent.push({type:"input_image", image_url:u, detail:"low"});
-  }
-
+  let resp;
   try{
-    const apiResp=await fetch("https://api.openai.com/v1/responses",{
+    const imageCall=await fetch("https://api.openai.com/v1/responses",{
       method:"POST",
       headers:{
         "Authorization":`Bearer ${env.OPENAI_API_KEY}`,
@@ -93,36 +75,26 @@ Regras:
       body:JSON.stringify({
         model:"gpt-5.6-luna",
         store:false,
-        input:[{role:"user",content:inputContent}],
-        text:{
-          format:{
-            type:"json_schema",
-            name:"roseiral_evolucao",
-            strict:true,
-            schema
-          }
-        }
+        input:[{role:"user",content}],
+        text:{format:{type:"json_schema",name:"roseiral_evolucao",strict:true,schema}}
       })
     });
-
-    const data=await apiResp.json().catch(()=>({}));
-    if(!apiResp.ok){
+    const data=await imageCall.json().catch(()=>({}));
+    if(!imageCall.ok){
       return json({
-        error:data?.error?.message||`OpenAI respondeu HTTP ${apiResp.status}`
-      },{status:apiResp.status});
+        error:data?.error?.message||`OpenAI respondeu HTTP ${imageCall.status}`,
+        code:data?.error?.code||null,
+        type:data?.error?.type||null,
+        request_id:data?.id||imageCall.headers.get("x-request-id")||null
+      },{status:imageCall.status});
     }
-
     const text=getOutputText(data);
-    if(!text) return json({error:"A OpenAI não retornou texto de análise."},{status:502});
-
+    if(!text)return json({error:"A OpenAI não retornou texto de análise.",request_id:data?.id||null},{status:502});
     let analysis;
-    try { analysis=JSON.parse(text); }
-    catch {
-      return json({error:"A OpenAI retornou uma resposta que não pôde ser interpretada como JSON."},{status:502});
-    }
-
-    return json({analysis});
+    try{analysis=JSON.parse(text)}
+    catch{return json({error:"A OpenAI retornou uma resposta que não pôde ser interpretada como JSON.",request_id:data?.id||null},{status:502})}
+    return json({analysis,request_id:data?.id||null});
   }catch(err){
-    return json({error:err?.message||String(err)},{status:500});
+    return json({error:err?.message||String(err),code:"openai_fetch_error"},{status:500});
   }
 }
