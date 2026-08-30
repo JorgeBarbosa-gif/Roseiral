@@ -532,8 +532,10 @@ let pendingPhotos=[];
 const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
 function publicStorageUrl(path){
   const base=String(window.ROSEIRAL_SUPABASE_URL||'').replace(/\/$/,'');
-  if(!base||!path)return '';
-  return `${base}/storage/v1/object/public/roseiral-fotos/${String(path).split('/').map(encodeURIComponent).join('/')}`;
+  const clean=String(path||'').replace(/^\/+/, '');
+  return base && clean
+    ? `${base}/storage/v1/object/public/roseiral-fotos/${clean.split('/').map(encodeURIComponent).join('/')}`
+    : '';
 }
 function save(){localStorage.setItem(key,JSON.stringify(db))}
 function toast(s){const t=document.getElementById('toast');t.textContent=s;t.style.display='block';setTimeout(()=>t.style.display='none',2200)}
@@ -782,23 +784,18 @@ function renderHistory(){
     const produtos=(a.items||[]).map(i=>`${esc(pname(i.produtoId))}: ${i.qtd} ${esc(i.unidade)}`).join(' · ');
 
     const fotos=(a.fotos||[]).map(f=>{
-      const src=f.url||publicStorageUrl(f.caminho)||f.data||'';
+      const src=publicStorageUrl(f.caminho)||f.url||f.data||'';
       if(!src)return '';
-
-      return `<div class="photo" style="position:relative;overflow:hidden">
-        <img src="${esc(src)}" alt="${esc(f.name||'Foto da aplicação')}"
-          style="display:block;width:100%;height:260px;object-fit:contain;background:#f4f4f4"
-          loading="lazy"
-          onerror="this.style.display='none';this.parentElement.querySelector('.photo-error').style.display='block'">
-        <div class="photo-error" style="display:none;padding:20px;text-align:center;background:#fafafa">
-          <b>Não foi possível exibir a foto aqui.</b>
-          <div class="sub" style="margin:6px 0 12px">${esc(f.name||'Foto')}</div>
-        </div>
-        <a href="${esc(src)}" target="_blank" rel="noopener"
-          style="display:block;margin-top:6px;text-align:center;color:var(--accent);font-weight:600;text-decoration:none">
-          Abrir foto em nova aba
+      return `<div class="photo" style="overflow:hidden">
+        <a href="${esc(src)}" target="_blank" rel="noopener noreferrer" title="Abrir foto em nova aba">
+          <img src="${esc(src)}" alt="${esc(f.name||'Foto da aplicação')}"
+            style="display:block;width:100%;height:auto;max-height:360px;object-fit:contain;background:#f4f4f4"
+            loading="eager">
         </a>
-        <small>${esc(f.name||'Foto')} · ${((f.size||0)/1024).toFixed(0)} KB</small>
+        <div style="padding:8px 2px 2px;display:flex;justify-content:space-between;gap:8px;align-items:center">
+          <small style="overflow-wrap:anywhere">${esc(f.name||'Foto')} · ${((f.size||0)/1024).toFixed(0)} KB</small>
+          <a href="${esc(src)}" target="_blank" rel="noopener noreferrer" style="white-space:nowrap;color:var(--accent);font-weight:700">Abrir foto</a>
+        </div>
       </div>`;
     }).join('');
 
